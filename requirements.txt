@@ -1,0 +1,17 @@
+rsgislib
+kealib
+numpy
+tqdm
+rios
+scikit-learn 
+earthengine-api
+gcloud
+scikit-image 
+scikit-optimize
+pandas
+geopandas
+jupyterlab
+ipywidgets
+ipykernel
+rasterstats
+seaborn 
