@@ -180,3 +180,5 @@ entire idea folder.
 #.idea/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+.DS_store
+change_detection/.DS_Store
