@@ -13,4 +13,3 @@ jupyterlab
 ipywidgets
 ipykernel
 rasterstats
-seaborn 

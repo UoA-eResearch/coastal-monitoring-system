@@ -1,0 +1,31 @@
+name: nzcc-env-v2
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - scikit-image
+  - rios
+  - scikit-learn
+  - jupyterlab
+  - ipykernel
+  - kealib
+  - geopandas
+  - tqdm
+  - ipywidgets
+  - pandas
+  - scikit-optimize
+  - numpy
+  - rasterstats
+  - python=3.9
+  - rsgislib
+  - geemap
+  - statsmodels
+  - h3-py
+  - h3pandas
+  - contextily
+  - pyod
+  - cython
+  - pip
+  - earthengine-api
+  - conda-build
+prefix: /Users/ben/miniconda3/envs/nzcc-env-v2
