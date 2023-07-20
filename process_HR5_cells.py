@@ -146,7 +146,7 @@ if __name__ == '__main__':
     h3_cells = gpd.read_file('global-inputs/HR5-change-cells.gpkg')
 
     # return list of cell indexes
-    index_list = list(h3_cells[:1]['index'])
+    index_list = list(h3_cells['index'])
 
     print(index_list)
 
@@ -183,7 +183,7 @@ if __name__ == '__main__':
         features = down_cells.iterfeatures()
 
         # download images
-        process_map(partial(download_images_mp, down_folder=down_folder), features, max_workers=6)
+        process_map(partial(download_images_mp, down_folder=down_folder), features, max_workers=7)
         
         # generate list of composite years
         year_list = []
