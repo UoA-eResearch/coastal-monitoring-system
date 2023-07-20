@@ -77,7 +77,7 @@ def get_child_cells(gdf, index, resolution=None): # if resolution is none all ch
         #print(i)
         test_r = get_children(i, gdf)
         #print(test_r.head())
-        df = df.append(test_r)
+        df = pd.concat([df, test_r])
     
     # drop duplicates and orginal cell
     df.drop_duplicates('index', inplace=True)
