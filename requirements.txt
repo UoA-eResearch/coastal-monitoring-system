@@ -5,7 +5,6 @@ tqdm
 rios
 scikit-learn 
 earthengine-api
-gcloud
 scikit-image 
 scikit-optimize
 pandas
@@ -14,4 +13,3 @@ jupyterlab
 ipywidgets
 ipykernel
 rasterstats
-seaborn 
