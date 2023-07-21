@@ -69,14 +69,17 @@ def count_chg_pxls_in_boundary(chg_img, boundary_pxls_img, chg_vals):
                 count_dict[key] = i[1]
     
     # return total boundary pxls for %
-    # try:
-    if con.shape == (3,2):
-        total = con[1] + con[2]
-    else:
-        total = con[0] + con[1]
-    count_dict['total'] = total[1]
+        try:
+            if con.shape == (3,2):
+                total = con[1] + con[2]
+                total = total[1]
+            else:
+                total = con[0] + con[1]
+                total = total[1]
+            count_dict['total'] = total
+        except:
+            count_dict['total'] = 0
     
-
     return count_dict
 
 def calc_cdi(input_chg_img, class_img, tmp, mask_vals, eov_boundary):
@@ -101,16 +104,21 @@ def calc_cdi(input_chg_img, class_img, tmp, mask_vals, eov_boundary):
     # return count of change pixels in boundary
     boundary_pxls = count_chg_pxls_in_boundary(input_chg_img, boundary_img, chg_values)
 
+    # if boundary_pxls is not 0 calc cdi else cdi and est chg = np.nan
     # return cdi based based on eov_boundary
-    if eov_boundary == True:
-        cdi = round((boundary_pxls['vegetation'] - boundary_pxls['sand']) / (boundary_pxls['vegetation'] + boundary_pxls['sand']), 3)
-    else: 
-        cdi = round((boundary_pxls['sand'] - boundary_pxls['water']) / (boundary_pxls['sand'] + boundary_pxls['water']), 3)
-    
-    # calc estimated change
-    # get img res
-    xRes, yRes = rsgislib.imageutils.get_img_res(input_chg_img)
-    estimated_change = cdi * xRes
+    if boundary_pxls['total'] != 0:
+        if eov_boundary == True:
+            cdi = round((boundary_pxls['vegetation'] - boundary_pxls['sand']) / (boundary_pxls['vegetation'] + boundary_pxls['sand']), 3)
+        else: 
+            cdi = round((boundary_pxls['sand'] - boundary_pxls['water']) / (boundary_pxls['sand'] + boundary_pxls['water']), 3)
+        
+        # calc estimated change
+        # get img res
+        xRes, yRes = rsgislib.imageutils.get_img_res(input_chg_img)
+        estimated_change = cdi * xRes
+    else:
+        cdi = np.nan
+        estimated_change = np.nan
 
     # remove tmp folder 
     #os.rmdir(tmp)
