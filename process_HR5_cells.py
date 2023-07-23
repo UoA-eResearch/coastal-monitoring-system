@@ -98,38 +98,42 @@ def download_images_mp(feature, down_folder):
     for year, sensor in composites.items():
         # generate image collection
         img_collection = imagecollection_utils.gen_imageCollection(year, aoi, sensor)
+
+        if img_collection.size().getInfo() != 0:
+            # calculate ndvi and mndwi
+            img_collection = (img_collection.map(normalised_difference.apply_ndvi)
+                            .map(normalised_difference.apply_mndwi))
+            
+            # select indice bands
+            indices_col = img_collection.select(['ndvi', 'mndwi'])
+
+            # generate geometric composite
+            indices_composite = indices_col.reduce(ee.Reducer.geometricMedian(2))
+
+            # rename bands
+            band_names = ['ndvi', 'mndwi']
+            indices_composite = indices_composite.select([0,1]).rename(band_names)
+
+            # generate pixel count and add to indices_composite
+            pixel_freq = indices_col.reduce(ee.Reducer.count()).rename(['observation_freq_ndvi', 'observation_freq_mndwi'])
+            # add pixel_freq to composite
+            indices_composite = indices_composite.addBands(pixel_freq)
+            
+            # clip composite_image for export
+            clip = indices_composite.clip(aoi).unmask(-99)
+
+            # define fn and metadata fn
+            fn = f"{feature['properties']['index']}-{sensor}-{year}.tif"
+            
+            # return metadata and update metadata_dict
+            comp_metadata = return_metadata(img_collection, sensor)
+            metadata_dict[year] = comp_metadata
+
+            # download image
+            image_utils.download_img_local(clip.toFloat(), down_folder, fn, aoi.geometry(), 'EPSG:2193', 20)
         
-        # calculate ndvi and mndwi
-        img_collection = (img_collection.map(normalised_difference.apply_ndvi)
-                          .map(normalised_difference.apply_mndwi))
-        
-        # select indice bands
-        indices_col = img_collection.select(['ndvi', 'mndwi'])
-
-        # generate geometric composite
-        indices_composite = indices_col.reduce(ee.Reducer.geometricMedian(2))
-
-        # rename bands
-        band_names = ['ndvi', 'mndwi']
-        indices_composite = indices_composite.select([0,1]).rename(band_names)
-
-        # generate pixel count and add to indices_composite
-        pixel_freq = indices_col.reduce(ee.Reducer.count()).rename(['observation_freq_ndvi', 'observation_freq_mndwi'])
-        # add pixel_freq to composite
-        indices_composite = indices_composite.addBands(pixel_freq)
-        
-        # clip composite_image for export
-        clip = indices_composite.clip(aoi).unmask(-99)
-
-        # define fn and metadata fn
-        fn = f"{feature['properties']['index']}-{sensor}-{year}.tif"
-        
-        # return metadata and update metadata_dict
-        comp_metadata = return_metadata(img_collection, sensor)
-        metadata_dict[year] = comp_metadata
-
-        # download image
-        image_utils.download_img_local(clip.toFloat(), down_folder, fn, aoi.geometry(), 'EPSG:2193', 20)
+        else:
+            continue
 
     # return metadata_dict as json file
     fn_meta = f"{down_folder}/{feature['properties']['index']}-metadata.json"
@@ -146,7 +150,7 @@ if __name__ == '__main__':
     h3_cells = gpd.read_file('global-inputs/HR5-change-cells.gpkg')
 
     # return list of cell indexes
-    index_list = list(h3_cells[56:]['index'])
+    index_list = list(h3_cells[125:]['index'])
 
     print(index_list)
 
