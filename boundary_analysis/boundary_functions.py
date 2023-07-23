@@ -171,39 +171,42 @@ def return_chg_pixels(folder, initial_class_img, output_cls_img):
     #populate classification with class names for validation
     rsgislib.rastergis.pop_rat_img_stats(output_cls_img, add_clr_tab=True, calc_pyramids=True, ignore_zero=True)
 
-    ratDataset = gdal.Open(output_cls_img, gdal.GA_Update)
-    red = rat.readColumn(ratDataset, 'Red')
-    green = rat.readColumn(ratDataset, 'Green')
-    blue = rat.readColumn(ratDataset, 'Blue')
-    ClassName = np.empty_like(red, dtype=np.dtype('a255'))
-    ClassName[...] = ""
+    try:
+        ratDataset = gdal.Open(output_cls_img, gdal.GA_Update)
+        red = rat.readColumn(ratDataset, 'Red')
+        green = rat.readColumn(ratDataset, 'Green')
+        blue = rat.readColumn(ratDataset, 'Blue')
+        ClassName = np.empty_like(red, dtype=np.dtype('a255'))
+        ClassName[...] = ""
 
 
-    red[1] = 51
-    blue[1] = 153
-    green[1] = 255
-    ClassName[1] = 'sand-water'
+        red[1] = 51
+        blue[1] = 153
+        green[1] = 255
+        ClassName[1] = 'sand-water'
 
-    red[2] = 255
-    blue[2] = 255
-    green[2] = 51
-    ClassName[2] = 'water-sand'
+        red[2] = 255
+        blue[2] = 255
+        green[2] = 51
+        ClassName[2] = 'water-sand'
 
-    red[3] = 0
-    blue[3] = 204
-    green[3] = 0
-    ClassName[3] = 'Vegetation-sand'
+        red[3] = 0
+        blue[3] = 204
+        green[3] = 0
+        ClassName[3] = 'Vegetation-sand'
 
-    red[4] = 0
-    blue[4] = 5
-    green[4] = 61
-    ClassName[4] = 'sand-vegetation'
+        red[4] = 0
+        blue[4] = 5
+        green[4] = 61
+        ClassName[4] = 'sand-vegetation'
 
-    rat.writeColumn(ratDataset, 'Red', red)
-    rat.writeColumn(ratDataset, 'Green', green)
-    rat.writeColumn(ratDataset, 'Blue', blue)
-    rat.writeColumn(ratDataset, 'ClassName', ClassName)
-    ratDataset = None
+        rat.writeColumn(ratDataset, 'Red', red)
+        rat.writeColumn(ratDataset, 'Green', green)
+        rat.writeColumn(ratDataset, 'Blue', blue)
+        rat.writeColumn(ratDataset, 'ClassName', ClassName)
+        ratDataset = None
+    except:
+        pass
 
 def calc_area_change(change_pxls_img):
     """

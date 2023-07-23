@@ -146,14 +146,14 @@ if __name__ == '__main__':
     h3_cells = gpd.read_file('HR5-change-cells.gpkg')
 
     # return list of cell indexes
-    index_list = list(h3_cells[:1]['index'])
+    index_list = list(h3_cells[2:3]['index'])
 
     print(index_list)
 
     # iterate over index_list and download composites
     for i in index_list:
         # create folder 
-        cell_folder_path = f'test_folder/{i}' 
+        cell_folder_path = f'../national-scale-change/test_folder/{i}' 
         cell_folder = os.path.abspath(cell_folder_path)
         if not os.path.exists(cell_folder):
             os.makedirs(cell_folder)
