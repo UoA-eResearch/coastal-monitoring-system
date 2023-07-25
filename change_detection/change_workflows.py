@@ -165,4 +165,4 @@ def return_change_output_otsu_merged_classes(input_img, class_img, out_folder, c
             pass
 
     # remove processing folder
-    #shutil.rmtree(tmp)
+    shutil.rmtree(tmp)

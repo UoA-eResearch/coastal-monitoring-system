@@ -148,30 +148,31 @@ def return_chg_pixels(folder, initial_class_img, output_cls_img):
                                             4 - sand-vegetation change
     """
     print(folder)
-    # return ndwi and ndvi imgs
-    for img in glob.glob(folder + '/*.kea'):
-        print(img)
-        if img.split('/')[-1][:4] == 'ndwi':
-            ndwi = img
-        else: 
-            ndvi = img
-    # band math 
-    band_defns = []
-    band_defns.append(rsgislib.imagecalc.BandDefn('ndwi', ndwi, 1))
-    band_defns.append(rsgislib.imagecalc.BandDefn('ndvi', ndvi, 1))
-    band_defns.append(rsgislib.imagecalc.BandDefn('class', initial_class_img, 1))
-    # define expression where water-sand = 1 sand-water = 2 vegetation-sand = 3 and sand-vegetation = 4
-    exp = (
-        "(class==1)&&(ndwi==2)?1:(class==2)&&(ndwi==1)?2:(class==3)&&(ndvi==1)?3:(class==1)&&(ndvi==2)?4:0"
-        )
-    # gen output using band math
-    rsgislib.imagecalc.band_math(
-        output_cls_img, exp, 'KEA', rsgislib.TYPE_8UINT, band_defns
-    )
-    #populate classification with class names for validation
-    rsgislib.rastergis.pop_rat_img_stats(output_cls_img, add_clr_tab=True, calc_pyramids=True, ignore_zero=True)
-
     try:
+        # return ndwi and ndvi imgs
+        for img in glob.glob(folder + '/*.kea'):
+            print(img)
+            if img.split('/')[-1][:4] == 'ndwi':
+                ndwi = img
+            else: 
+                ndvi = img
+        # band math 
+        band_defns = []
+        band_defns.append(rsgislib.imagecalc.BandDefn('ndwi', ndwi, 1))
+        band_defns.append(rsgislib.imagecalc.BandDefn('ndvi', ndvi, 1))
+        band_defns.append(rsgislib.imagecalc.BandDefn('class', initial_class_img, 1))
+        # define expression where water-sand = 1 sand-water = 2 vegetation-sand = 3 and sand-vegetation = 4
+        exp = (
+            "(class==1)&&(ndwi==2)?1:(class==2)&&(ndwi==1)?2:(class==3)&&(ndvi==1)?3:(class==1)&&(ndvi==2)?4:0"
+            )
+        # gen output using band math
+        rsgislib.imagecalc.band_math(
+            output_cls_img, exp, 'KEA', rsgislib.TYPE_8UINT, band_defns
+        )
+        #populate classification with class names for validation
+        rsgislib.rastergis.pop_rat_img_stats(output_cls_img, add_clr_tab=True, calc_pyramids=True, ignore_zero=True)
+
+    
         ratDataset = gdal.Open(output_cls_img, gdal.GA_Update)
         red = rat.readColumn(ratDataset, 'Red')
         green = rat.readColumn(ratDataset, 'Green')
@@ -269,31 +270,34 @@ def return_new_class_image(folder, output_cls_img):
     #populate classification with class names for validation
     rsgislib.rastergis.pop_rat_img_stats(output_cls_img, add_clr_tab=True, calc_pyramids=True, ignore_zero=True)
 
-    ratDataset = gdal.Open(output_cls_img, gdal.GA_Update)
-    red = rat.readColumn(ratDataset, 'Red')
-    green = rat.readColumn(ratDataset, 'Green')
-    blue = rat.readColumn(ratDataset, 'Blue')
-    ClassName = np.empty_like(red, dtype=np.dtype('a255'))
-    ClassName[...] = ""
+    try:
+        ratDataset = gdal.Open(output_cls_img, gdal.GA_Update)
+        red = rat.readColumn(ratDataset, 'Red')
+        green = rat.readColumn(ratDataset, 'Green')
+        blue = rat.readColumn(ratDataset, 'Blue')
+        ClassName = np.empty_like(red, dtype=np.dtype('a255'))
+        ClassName[...] = ""
 
 
-    red[1] = 252
-    blue[1] = 219
-    green[1] = 3
-    ClassName[1] = 'sand'
+        red[1] = 252
+        blue[1] = 219
+        green[1] = 3
+        ClassName[1] = 'sand'
 
-    red[2] = 3
-    blue[2] = 102
-    green[2] = 252
-    ClassName[2] = 'water'
+        red[2] = 3
+        blue[2] = 102
+        green[2] = 252
+        ClassName[2] = 'water'
 
-    red[3] = 23
-    blue[3] = 110
-    green[3] = 5
-    ClassName[3] = 'vegetation'
+        red[3] = 23
+        blue[3] = 110
+        green[3] = 5
+        ClassName[3] = 'vegetation'
 
-    rat.writeColumn(ratDataset, 'Red', red)
-    rat.writeColumn(ratDataset, 'Green', green)
-    rat.writeColumn(ratDataset, 'Blue', blue)
-    rat.writeColumn(ratDataset, 'ClassName', ClassName)
-    ratDataset = None
+        rat.writeColumn(ratDataset, 'Red', red)
+        rat.writeColumn(ratDataset, 'Green', green)
+        rat.writeColumn(ratDataset, 'Blue', blue)
+        rat.writeColumn(ratDataset, 'ClassName', ClassName)
+        ratDataset = None
+    except:
+        pass

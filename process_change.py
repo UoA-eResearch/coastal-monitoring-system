@@ -23,13 +23,23 @@ from functools import partial
 import glob
 import os
 import json
+import numpy as np
 
-ee.Initialize()
+# ee.Initialize()
 
 # iterate over HR5 directory to get cell folders
-hr5_dir = '../national-scale-change/HR5'
+hr5_dir = '/cd-data/HR5'
 
-for cell_folder in glob.glob(f'{hr5_dir}/**'):
+# define start time 
+start = time.time()
+
+folder_list = glob.glob(f'{hr5_dir}/**')
+
+print(len(folder_list))
+
+print(len(folder_list[folder_list.index('/cd-data/HR5/85dab32bfffffff'):]))
+
+for cell_folder in [folder_list[folder_list.index('/cd-data/HR5/85dab32bfffffff')]]:
     
     print(cell_folder)
 
@@ -107,11 +117,7 @@ for cell_folder in glob.glob(f'{hr5_dir}/**'):
     # iterate over subdirs to build dictionary containing all attributes required in csv
     for dir in chg_output_subdirs:
         print(dir)
-        # define change outputs
-        ndwi_chg = glob.glob(dir + '/ndwi-chg.kea')[0]
-        ndvi_chg = glob.glob(dir + '/ndvi-chg.kea')[0]
-        print(ndwi_chg)
-        print(ndvi_chg)
+        
 
         # define a dict to store variables
         chg_variables  = {}
@@ -119,33 +125,55 @@ for cell_folder in glob.glob(f'{hr5_dir}/**'):
         date = dir.split('/')[-1]
         chg_variables['year'] = date
 
+        # define change outputs
+        ndwi_chg = glob.glob(dir + '/ndwi*')
+        ndvi_chg = glob.glob(dir + '/ndvi*')
+        print(ndwi_chg)
+        print(ndvi_chg)
+
         # calc cdi and estimated change and add to chg_variables
         # calc cdi_iw
-        cdi_iw = boundary_functions.calc_cdi(ndwi_chg, cls_img, tmp=tmp, mask_vals=[3,4,5], eov_boundary=False)
-        chg_variables['cdi_iw'] = cdi_iw['cdi_iw']
-        chg_variables['est_iw_chg'] = cdi_iw['est_iw_chg']
+        if ndwi_chg != []:
+            cdi_iw = boundary_functions.calc_cdi(ndwi_chg[0], cls_img, tmp=tmp, mask_vals=[3,4,5], eov_boundary=False)
+            chg_variables['cdi_iw'] = cdi_iw['cdi_iw']
+            chg_variables['est_iw_chg'] = cdi_iw['est_iw_chg']
+        else:
+            chg_variables['cdi_iw'] = np.nan
+            chg_variables['est_iw_chg'] = np.nan
 
         # calc cdi_eov
-        cdi_eov = boundary_functions.calc_cdi(ndvi_chg, cls_img, tmp=tmp, mask_vals=[2,4,5], eov_boundary=True)
-        chg_variables['cdi_eov'] = cdi_eov['cdi_eov']
-        chg_variables['est_eov_chg'] = cdi_eov['est_eov_chg']
+        if ndvi_chg != []:
+            cdi_eov = boundary_functions.calc_cdi(ndvi_chg[0], cls_img, tmp=tmp, mask_vals=[2,4,5], eov_boundary=True)
+            chg_variables['cdi_eov'] = cdi_eov['cdi_eov']
+            chg_variables['est_eov_chg'] = cdi_eov['est_eov_chg']
+        else:
+            chg_variables['cdi_eov'] = np.nan
+            chg_variables['est_eov_chg'] = np.nan
+        
+        try:
+            # return change pixels and calc area change
+            output_chg_pxls_img = f'{tmp}/{date}-chg-pixels.kea'
+            boundary_functions.return_chg_pixels(dir, cls_img, output_chg_pxls_img)
+            # calc area change
+            area_chg = boundary_functions.calc_area_change(output_chg_pxls_img)
 
-        # return change pixels and calc area change
-        output_chg_pxls_img = f'{tmp}/{date}-chg-pixels.kea'
-        boundary_functions.return_chg_pixels(dir, cls_img, output_chg_pxls_img)
-        # calc area change
-        area_chg = boundary_functions.calc_area_change(output_chg_pxls_img)
+            # add area change values to chg_variables dict
+            chg_variables['area_change_iw (m\u00b2)'] = area_chg['area_iw']
+            chg_variables['area_change_eov (m\u00b2)'] = area_chg['area_eov']
 
-        # add area change values to chg_variables dict
-        chg_variables['area_change_iw (m\u00b2)'] = area_chg['area_iw']
-        chg_variables['area_change_eov (m\u00b2)'] = area_chg['area_eov']
+            # return new class images for each time instance
+            new_class_img = f'{dir}/new_classification.kea'
+            boundary_functions.return_new_class_image(dir, new_class_img)
 
-        # return new class images for each time instance
-        new_class_img = f'{dir}/new_classification.kea'
-        boundary_functions.return_new_class_image(dir, new_class_img)
+        except:
+            chg_variables['area_change_iw (m\u00b2)'] = np.nan
+            chg_variables['area_change_eov (m\u00b2)'] = np.nan
+
 
         # append chg_variables to outputs_list
         outputs.append(chg_variables)
+        
+        
         
     # create pandas dataframe of change results 
     df = pd.DataFrame.from_dict(outputs)
@@ -153,3 +181,8 @@ for cell_folder in glob.glob(f'{hr5_dir}/**'):
     df.sort_values(by=['year'])
 
     df.to_csv(f'{boundary_folder}/boundary-analysis-results.csv')
+
+end = time.time()
+elapsed = end - start
+print('run time: ', elapsed/60, 'minutes')
+
