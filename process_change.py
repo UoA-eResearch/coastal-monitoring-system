@@ -180,7 +180,7 @@ for cell_folder in [folder_list[folder_list.index('/cd-data/HR5/85dab32bfffffff'
 
     df.sort_values(by=['year'])
 
-    df.to_csv(f'{boundary_folder}/boundary-analysis-results.csv')
+    df.to_csv(f'{boundary_folder}/{cell_id}-results.csv')
 
 end = time.time()
 elapsed = end - start
