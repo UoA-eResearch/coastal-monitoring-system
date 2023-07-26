@@ -84,6 +84,9 @@ def process_change_for_cell(cell_folder):
         date = dir.split('/')[-1]
         chg_variables['year'] = date
 
+        # add cell_index id to chg variables
+        chg_variables['cell_id'] = cell_id
+
         # define change outputs
         ndwi_chg = glob.glob(dir + '/ndwi*')
         ndvi_chg = glob.glob(dir + '/ndvi*')
@@ -137,7 +140,7 @@ def process_change_for_cell(cell_folder):
     # create pandas dataframe of change results 
     df = pd.DataFrame.from_dict(outputs)
 
-    df.sort_values(by=['year'])
+    
 
     df.to_csv(f'{boundary_folder}/boundary-analysis-results.csv')
 
@@ -156,6 +159,8 @@ if __name__ == '__main__':
 
     # chunk list into portions of 10
     cell_lst_chunks = [cell_list[x:x+10] for x in range(0, len(cell_list), 10)]
+
+    print(cell_lst_chunks)
 
     # iterate over chunks processing in parallel
     for chunk in cell_lst_chunks:
