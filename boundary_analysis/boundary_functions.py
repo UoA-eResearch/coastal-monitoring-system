@@ -229,10 +229,10 @@ def calc_area_change(change_pxls_img):
     # get img res
     xRes, yRes = rsgislib.imageutils.get_img_res(change_pxls_img)
 
-    # define change for each set of classes as metres squared
-    waterline_area_chg = (sand_to_water - water_to_sand)*(xRes*yRes)
+    # define change for each set of classes as hectares
+    waterline_area_chg = (sand_to_water - water_to_sand)*(xRes*yRes)/10000
 
-    eov_area_chg = (veg_to_sand - sand_to_veg )*(xRes*yRes)
+    eov_area_chg = (veg_to_sand - sand_to_veg )*(xRes*yRes)/100000
 
     return {'area_iw': waterline_area_chg,
             'area_eov': eov_area_chg}
