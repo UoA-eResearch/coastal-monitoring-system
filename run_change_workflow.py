@@ -140,7 +140,7 @@ def process_change_for_cell(cell_folder):
     # create pandas dataframe of change results 
     df = pd.DataFrame.from_dict(outputs)
     # save results to csv with folder cell_id as fn
-    df.to_csv(f'cd-data/HR5-results/{cell_id}-results.csv')
+    df.to_csv(f'/cd-data/HR5-results/{cell_id}-results.csv')
 
 ### run processing ###
 if __name__ == '__main__':
