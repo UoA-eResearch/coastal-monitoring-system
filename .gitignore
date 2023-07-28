@@ -184,3 +184,4 @@ entire idea folder.
 *.DS_store
 change_detection/.DS_Store
 *__pycache__*
+.gpkg*
