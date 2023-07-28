@@ -161,9 +161,21 @@ def mosaic_annual_composites(folder):
                 # mosaic images
                 image_utils.mosaic(img_list, out_img_fn)
                 # remove tif files
-                [os.remove(tif) for tif in glob.glob(f'{folder}/*{year}.tif')]
+                [os.remove(tif) for tif in glob.glob(f'{down_folder}/*{year}.tif')]
             except:
                 continue
+
+def return_input_imgs_folder(h3_id):
+    # define all H3 shp
+    h3_grids = gpd.read_file('global-inputs/h3-coast-all-res.gpkg')
+    # define HR5 directory
+    HR5_dir = '/cd-data/HR5'
+    # return cell
+    h3_cell = h3_grids[h3_grids['cell_id'] == h3_id]
+    # find folder that matches parent_id
+    folder = [i for i in glob.glob(f'{HR5_dir}/*') if i.split['/'][-1] == h3_cell['parent_id']]
+    return folder
+
 
 # create function to process change
 def process_change_for_cell(cell_folder, output_folder):
