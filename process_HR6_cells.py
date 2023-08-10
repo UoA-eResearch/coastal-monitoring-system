@@ -32,40 +32,41 @@ def generate_cls_imgs(cell_id):
     feature = h3_cells[h3_cells['index'] == cell_id]
     processing_functions.msk_img_by_gpd(feature, cls_img, cls_folder)
 
+    return cell_folder
+
+def process_mp(cell_id, output_folder, return_img_from_HR5):
+    try:
+        # generate cls img
+        cell_folder = generate_cls_imgs(cell_id)
+
+        processing_functions.process_change_for_cell(cell_folder, 
+        output_folder=output_folder, return_img_from_HR5=return_img_from_HR5)
+    except:
+        pass
+    
+
 ### DOWNLOAD IMAGES ###
 if __name__ == '__main__':
     # define start time 
     start = time.time()
 
     # read cells to download as gpd
-    h3_grids = gpd.read_file('global-inputs/h3-coast-all-res.gpkg')
+    h3_grids = gpd.read_file('global-inputs/h3_coast_HR_all_incl_islands.gpkg')
     h3_cells = gpd.read_file('global-inputs/HR6-change-cells-incl-islands.gpkg')
 
     # return list of cell indexes
-    index_list = list(h3_cells[:1]['index'])
+    index_list = list(h3_cells['index'])
 
-    print(index_list)
+    # chunk list
+    index_chunks = processing_functions.chunk_iterable(index_list, 10)
 
-    # iterate over index_list and download composites
-    for i in index_list:
-
-        # generate cls img
-        generate_cls_imgs(i)
-
-        # test folder return
-        test = processing_functions.return_input_imgs_folder(i)
-
-        print(test)
-
-
-        # # make cell folder iterable
-        # cell_iterable = [cell_folder]
-
-        # print(cell_iterable)
-
-        # # process cell
-        # process_map(partial(processing_functions.process_change_for_cell, output_folder='/cd-data/HR6-results'),
-        # cell_iterable, max_workers=7)
+    # print(index_chunks)
+    # print(len(index_chunks))
+    
+    # process
+    for chunk in index_chunks:
+        process_map(partial(process_mp, output_folder='/cd-data/HR6-results', return_img_from_HR5=True),
+        chunk, max_workers=7)
 
     end = time.time()
     elapsed = end - start

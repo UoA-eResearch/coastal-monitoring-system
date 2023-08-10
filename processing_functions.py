@@ -167,18 +167,19 @@ def mosaic_annual_composites(folder):
 
 def return_input_imgs_folder(h3_id):
     # define all H3 shp
-    h3_grids = gpd.read_file('global-inputs/h3-coast-all-res.gpkg')
+    h3_grids = gpd.read_file('global-inputs/h3_coast_HR_all_incl_islands.gpkg')
     # define HR5 directory
     HR5_dir = '/cd-data/HR5'
     # return cell
-    h3_cell = h3_grids[h3_grids['cell_id'] == h3_id]
+    parent_id = h3_grids.loc[h3_grids['hex_id'] == h3_id, 'parent_id'].item()
+    print(parent_id)
     # find folder that matches parent_id
-    folder = [i for i in glob.glob(f'{HR5_dir}/*') if i.split['/'][-1] == h3_cell['parent_id']]
-    return folder
+    folder = [i for i in glob.glob(f'{HR5_dir}/*') if i.split('/')[-1] == parent_id]
+    return f'{folder[0]}/inputs'
 
 
 # create function to process change
-def process_change_for_cell(cell_folder, output_folder):
+def process_change_for_cell(cell_folder, output_folder, return_img_from_HR5=False):
     ## CREATE OUTPUT FOLDERS ##
     # define outputs folder path
     out_folder_path = f'{cell_folder}/change-detection' 
@@ -197,17 +198,27 @@ def process_change_for_cell(cell_folder, output_folder):
     if not os.path.exists(tmp):
         os.makedirs(tmp)
 
-    ## DEFINE INPUTS ##
-    # get input folder
-    img_folder = f'{cell_folder}/inputs'
-    print(img_folder)
-
     # get cell_id for subdir
     cell_id = cell_folder.split('/')[-1]
     print(cell_id)
 
+    ## DEFINE INPUTS ##
+    # get input folder
+    if return_img_from_HR5 == True:
+        try:
+            img_folder = return_input_imgs_folder(cell_id)
+        except:
+            print('no parent cell found')
+            pass
+    else:
+        img_folder = f'{cell_folder}/inputs'
+    print(img_folder)
+
+    
+
     # define class_img, ndvi and mndwi bands and class_vals
     cls_img = f'{cell_folder}/inputs/classification/cls-img.kea'
+    print(cls_img)
     ndvi = 1
     mndwi = 2
     class_values = {'water': 2, 'sand': 1, 'vegetation': 3}
@@ -215,6 +226,7 @@ def process_change_for_cell(cell_folder, output_folder):
     ### RUN CHANGE ANALYSIS ###
     # iterate over images and return change outputs
     for in_img in glob.glob(img_folder  + '/*.kea'):
+        print(in_img)
         # define img_id
         img_id = in_img.split('/')[-1][:-4]
         
@@ -306,3 +318,6 @@ def process_change_for_cell(cell_folder, output_folder):
     df = pd.DataFrame.from_dict(outputs)
     # save results to csv with folder cell_id as fn
     df.to_csv(f'{output_folder}/{cell_id}-results.csv')
+
+def chunk_iterable(iterable, chunk_size):
+    return [iterable[x:x+chunk_size] for x in range(0, len(iterable), chunk_size)]
