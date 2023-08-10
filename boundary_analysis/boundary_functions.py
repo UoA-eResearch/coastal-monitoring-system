@@ -2,7 +2,7 @@
 import rsgislib
 import rsgislib.rastergis
 import rsgislib.imageutils
-import rsgislib.imagecalc
+from rsgislib import imagecalc
 import rsgislib.classification
 import numpy as np
 import pandas as pd
@@ -158,15 +158,15 @@ def return_chg_pixels(folder, initial_class_img, output_cls_img):
                 ndvi = img
         # band math 
         band_defns = []
-        band_defns.append(rsgislib.imagecalc.BandDefn('ndwi', ndwi, 1))
-        band_defns.append(rsgislib.imagecalc.BandDefn('ndvi', ndvi, 1))
-        band_defns.append(rsgislib.imagecalc.BandDefn('class', initial_class_img, 1))
+        band_defns.append(imagecalc.BandDefn('ndwi', ndwi, 1))
+        band_defns.append(imagecalc.BandDefn('ndvi', ndvi, 1))
+        band_defns.append(imagecalc.BandDefn('class', initial_class_img, 1))
         # define expression where water-sand = 1 sand-water = 2 vegetation-sand = 3 and sand-vegetation = 4
         exp = (
             "(class==1)&&(ndwi==2)?1:(class==2)&&(ndwi==1)?2:(class==3)&&(ndvi==1)?3:(class==1)&&(ndvi==2)?4:0"
             )
         # gen output using band math
-        rsgislib.imagecalc.band_math(
+        imagecalc.band_math(
             output_cls_img, exp, 'KEA', rsgislib.TYPE_8UINT, band_defns
         )
         #populate classification with class names for validation
@@ -218,7 +218,7 @@ def calc_area_change(change_pxls_img):
             negative values indicate erosion and positive values indicate accretion 
     """
     # count pixels for each class in image
-    counts = rsgislib.imagecalc.count_pxls_of_val(change_pxls_img, [1,2,3,4], 1)
+    counts = imagecalc.count_pxls_of_val(change_pxls_img, [1,2,3,4], 1)
 
     # define change pixels
     sand_to_water = counts[0] 
@@ -257,14 +257,14 @@ def return_new_class_image(folder, output_cls_img):
             ndvi = img
     # band math 
     band_defns = []
-    band_defns.append(rsgislib.imagecalc.BandDefn('ndwi', ndwi, 1))
-    band_defns.append(rsgislib.imagecalc.BandDefn('ndvi', ndvi, 1))
+    band_defns.append(imagecalc.BandDefn('ndwi', ndwi, 1))
+    band_defns.append(imagecalc.BandDefn('ndvi', ndvi, 1))
     # define expression where sand = 1 water = 2 vegetation-sand = 3 and sand-vegetation = 4
     exp = (
         "(ndwi==2)?2:(ndvi==2)?3:(ndvi==1)||(ndwi==1)?1:0"
         )
     # gen output using band math
-    rsgislib.imagecalc.band_math(
+    imagecalc.band_math(
         output_cls_img, exp, 'KEA', rsgislib.TYPE_8UINT, band_defns
     )
     #populate classification with class names for validation
