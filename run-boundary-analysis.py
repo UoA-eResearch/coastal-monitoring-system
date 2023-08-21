@@ -100,39 +100,84 @@ def run_boundary_analysis_for_cell(cell_folder, output_folder):
     # save results to csv with folder cell_id as fn
     df.to_csv(f'{output_folder}/{cell_id}-results.csv')
 
+def run_chg_pixels_for_cell(cell_folder, output_folder):
+    # define boundary boundary analysis output folder
+    boundary_folder_path = f'{cell_folder}/boundary-analysis'
+    boundary_folder = os.path.abspath(boundary_folder_path)
+    if not os.path.exists(boundary_folder):
+        os.makedirs(boundary_folder)
+
+    # create outputs folder for boundary analysis outputs
+    outputs = os.path.join(boundary_folder, 'outputs')
+    if not os.path.exists(outputs):
+        os.makedirs(outputs)
+    
+    # iterate over subdirs to build dictionary containing all attributes required in csv
+    for dir in glob.glob(cell_folder + '/change-detection/*[0-9]'):
+        print(dir)
+        
+        # define a dict to store variables
+        chg_variables  = {}
+        # get the date from the subdir path
+        date = dir.split('/')[-1]
+
+        # define change outputs and initial cls image
+        ndwi_chg = f'{dir}/ndwi-chg.kea'
+        ndvi_chg = f'{dir}/ndvi-chg.kea'
+        cls_img = f'{cell_folder}/inputs/classification/cls-img.kea'
+
+        print(cls_img)
+        print(ndwi_chg)
+        print(ndvi_chg)
+        
+        
+        # return change pixels and calc area change
+        output_chg_pxls_img = f'{outputs}/{date}-chg-pixels.kea'
+        boundary_functions.return_chg_pixels(dir, cls_img, output_chg_pxls_img)
+
+        
+        
+
 def chunk_iterable(iterable, chunk_size):
     return [iterable[x:x+chunk_size] for x in range(0, len(iterable), chunk_size)]
 
 
 def process_mp(cell_folder, output_folder):
 
-    run_boundary_analysis_for_cell(cell_folder, 
+    # run_boundary_analysis_for_cell(cell_folder, 
+    # output_folder=output_folder)
+
+    run_chg_pixels_for_cell(cell_folder, 
     output_folder=output_folder)
 
 
+
     
-# if __name__ == '__main__':
-# define start time 
-start = time.time()
+if __name__ == '__main__':
+    # define start time 
+    start = time.time()
 
-# return list of cell indexes
-index_list = glob.glob('/cd-data/HR5/85bb510bfffffff')
+    # create output folder
+    out_dir_fp = '/Users/ben/Desktop/national-scale-change/HR5/cell-metrics'
+    if not os.path.exists(out_dir_fp):
+        os.makedirs(out_dir_fp)
 
-print(index_list)
+    # return list of cell indexes
+    index_list = glob.glob('/Users/ben/Desktop/national-scale-change/HR5/data/*') 
 
-# chunk list
-index_chunks = chunk_iterable(index_list, 10)
+    print(index_list)
 
-# print(index_chunks)
-print(len(index_chunks))
+    # chunk list
+    index_chunks = chunk_iterable(index_list, 10)
 
-# process
-for chunk in index_chunks:
-    for cell in chunk:
-        run_boundary_analysis_for_cell(cell, output_folder='/cd-data/HR5-boundary-analysis-test')
-    # process_map(partial(process_mp, output_folder='/cd-data/HR5-boundary-analysis-test'),
-    # chunk, max_workers=7)
+    # print(index_chunks)
+    print(len(index_chunks))
 
-end = time.time()
-elapsed = end - start
-print('run time: ', elapsed/60, 'minutes')
+    # process
+    for chunk in index_chunks:
+        process_map(partial(process_mp, output_folder=out_dir_fp),
+        chunk, max_workers=7)
+
+    end = time.time()
+    elapsed = end - start
+    print('run time: ', elapsed/60, 'minutes')
