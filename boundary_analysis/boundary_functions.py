@@ -163,7 +163,8 @@ def return_chg_pixels(folder, initial_class_img, output_cls_img):
         band_defns.append(imagecalc.BandDefn('class', initial_class_img, 1))
         # define expression where water-sand = 1 sand-water = 2 vegetation-sand = 3 and sand-vegetation = 4
         exp = (
-            "(class==1)&&(ndwi==2)?1:(class==2)&&(ndwi==1)?2:(class==3)&&(ndvi==1)?3:(class==1)&&(ndvi==2)?4:0"
+            "(class==1)&&(ndwi==2)?1:(class==2)&&(ndwi==1)?2:(class==3)&&(ndvi==1)?3:(class==1)&&(ndvi==2)?4:"
+            "(class==1)&&(ndvi==1)||(class==2)&&(ndwi==2)||(class==3)&&(ndvi==2)?5:0"
             )
         # gen output using band math
         imagecalc.band_math(
@@ -200,6 +201,11 @@ def return_chg_pixels(folder, initial_class_img, output_cls_img):
         blue[4] = 5
         green[4] = 61
         ClassName[4] = 'sand-vegetation'
+
+        red[5] = 150
+        blue[5] = 75
+        green[5] = 45
+        ClassName[5] = 'no change'
 
         rat.writeColumn(ratDataset, 'Red', red)
         rat.writeColumn(ratDataset, 'Green', green)
