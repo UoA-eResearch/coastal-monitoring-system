@@ -5,6 +5,9 @@ import os
 import glob
 import numpy as np
 import pandas as pd
+import geopandas as gpd
+import rasterio
+import rasterio.mask
 from tqdm.contrib.concurrent import process_map
 
 
@@ -12,8 +15,43 @@ from tqdm.contrib.concurrent import process_map
 import change_detection.change_workflows as workflow
 from boundary_analysis import boundary_functions
 
+def msk_img_by_gpd(row, img, folder):
+    out_img_path = '{}/cls-img.kea'.format(folder)
+    # make sure feature and img crs match
+    #row.to_crs(2193, inplace=True)
+    geom = row['geometry']
+    with rasterio.open(img) as src:
+        out_image, out_transform = rasterio.mask.mask(src, geom, crop=True)
+        out_meta = src.meta
+
+    out_meta.update({"driver": "KEA",
+                    "height": out_image.shape[1],
+                    "width": out_image.shape[2],
+                    "transform": out_transform})
+
+    with rasterio.open(out_img_path, "w", **out_meta) as dest:
+        dest.write(out_image)
+
 # create function to process change
 def process_change_for_cell(cell_folder):
+    ## GENERATE CLASS IMAGE FOR EACH CELL
+    h3_cells = gpd.read_file('global-inputs/HR5-change-cells-aoi.gpkg')
+
+    # create cls folder path
+    cls_folder_path = f'{cell_folder}/inputs/classification' 
+    cls_folder = os.path.abspath(cls_folder_path)
+    if not os.path.exists(cls_folder):
+        os.makedirs(cls_folder)
+
+    # get cell_id from folder path
+    cell_id = cell_folder.split('/')[-1]
+    
+    # define cls-img
+    cls_img = 'global-inputs/classification/2019-national-5cls-nztm-aoi.kea'
+    feature = h3_cells[h3_cells['index'] == cell_id]
+    msk_img_by_gpd(feature, cls_img, cls_folder)
+
+
     ## CREATE OUTPUT FOLDERS ##
     # define outputs folder path
     out_folder_path = f'{cell_folder}/change-detection' 
@@ -28,7 +66,7 @@ def process_change_for_cell(cell_folder):
         os.makedirs(boundary_folder)
     
     # create tmp folder for boundary analysis outputs
-    tmp = os.path.join(boundary_folder, 'tmp')
+    tmp = os.path.join(boundary_folder, 'outputs')
     if not os.path.exists(tmp):
         os.makedirs(tmp)
 
@@ -140,7 +178,7 @@ def process_change_for_cell(cell_folder):
     # create pandas dataframe of change results 
     df = pd.DataFrame.from_dict(outputs)
     # save results to csv with folder cell_id as fn
-    df.to_csv(f'/cd-data/HR5-results/{cell_id}-results.csv')
+    df.to_csv(f'/Users/ben/Desktop/national-scale-change/HR5-run-2/results/{cell_id}-results.csv')
 
 ### run processing ###
 if __name__ == '__main__':
@@ -148,7 +186,7 @@ if __name__ == '__main__':
     start = time.time()
 
     # define main directtory
-    hr5_dir = '/cd-data/HR5'
+    hr5_dir = '/Users/ben/Desktop/national-scale-change/HR5-run-2/data'
 
     # generate list of folders
     cell_list = glob.glob(f'{hr5_dir}/*')

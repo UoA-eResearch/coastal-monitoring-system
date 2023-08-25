@@ -157,7 +157,7 @@ if __name__ == '__main__':
     # iterate over index_list and download composites
     for i in index_list:
         # create folder 
-        cell_folder_path = f'/cd-data/HR5/{i}' 
+        cell_folder_path = f'/Users/ben/Desktop/defining-aoi/download-HR5/{i}' 
         cell_folder = os.path.abspath(cell_folder_path)
         if not os.path.exists(cell_folder):
             os.makedirs(cell_folder)
@@ -174,12 +174,15 @@ if __name__ == '__main__':
         if not os.path.exists(cls_folder):
             os.makedirs(cls_folder)
         # define cls-img
-        cls_img = 'global-inputs/classification/2019-national-5cls-nztm-MMU1ha.kea'
+        cls_img = 'global-inputs/classification/2019-national-5cls-nztm-aoi.kea'
         feature = h3_cells[h3_cells['index'] == i]
         msk_img_by_gpd(feature, cls_img, cls_folder)
 
         # return all child cells at res 5 for test cell at index 4
-        down_cells = h3_utils.get_child_cells(h3_grids, i, 6)
+        #down_cells = h3_utils.get_child_cells(h3_grids, i, 5)
+
+        # test downloading whole cell at HR5
+        down_cells = h3_cells[h3_cells['index'] == i]
         # reproject to 4326 for GEE
         down_cells.to_crs(4326, inplace=True)
 
