@@ -9,7 +9,7 @@ import geopandas as gpd
 import rasterio
 import rasterio.mask
 from tqdm.contrib.concurrent import process_map
-import rsgislib.imageutils
+from functools import partial
 
 
 # import change modules
@@ -33,10 +33,43 @@ def msk_img_by_gpd(row, img, folder):
     with rasterio.open(out_img_path, "w", **out_meta) as dest:
         dest.write(out_image)
 
+def generate_cls_imgs(cell_id, h3_shp):
+    # create folder 
+    cell_folder_path = f'/cd-data/HR6/{cell_id}' 
+    cell_folder = os.path.abspath(cell_folder_path)
+    if not os.path.exists(cell_folder):
+        os.makedirs(cell_folder)
+    # create download folder path
+    down_folder_path = f'{cell_folder}/inputs' 
+    down_folder = os.path.abspath(down_folder_path)
+    if not os.path.exists(down_folder):
+        os.makedirs(down_folder)
+
+    # clip classification to h3 cell
+    # create cls folder path
+    cls_folder_path = f'{cell_folder}/inputs/classification' 
+    cls_folder = os.path.abspath(cls_folder_path)
+    if not os.path.exists(cls_folder):
+        os.makedirs(cls_folder)
+    # define cls-img
+    cls_img = 'global-inputs/classification/2019-national-5cls-nztm-aoi.kea'
+    feature = h3_shp[h3_shp['index'] == cell_id]
+    msk_img_by_gpd(feature, cls_img, cls_folder)
+
+def return_input_imgs_folder(h3_id, hr5_dir):
+    # define all H3 shp
+    h3_grids = gpd.read_file('global-inputs/h3_coast_HR_all_incl_islands.gpkg')
+    # return cell
+    parent_id = h3_grids.loc[h3_grids['hex_id'] == h3_id, 'parent_id'].item()
+    print(parent_id)
+    # find folder that matches parent_id
+    folder = [i for i in glob.glob(f'{hr5_dir}/*') if i.split('/')[-1] == parent_id]
+    return f'{folder[0]}/inputs'
+
 # create function to process change
-def process_change_for_cell(cell_folder):
+def process_change_for_cell(cell_folder, h3_shp, inputs_folder=None):
     ## GENERATE CLASS IMAGE FOR EACH CELL
-    h3_cells = gpd.read_file('global-inputs/HR5-change-cells-aoi.gpkg')
+    h3_cells = gpd.read_file(h3_shp)
 
     # create cls folder path
     cls_folder_path = f'{cell_folder}/inputs/classification' 
@@ -46,17 +79,13 @@ def process_change_for_cell(cell_folder):
 
     # get cell_id from folder path
     cell_id = cell_folder.split('/')[-1]
+    print(cell_id)
     
     # define cls-img
     cls_img = 'global-inputs/classification/2019-national-5cls-nztm-aoi.kea'
-    #feature = h3_cells[h3_cells['index'] == cell_id]
-    out_cls_img = f'{cell_folder}/inputs/classification/cls-img.kea'
-    roi_img = f'{cell_folder}/inputs/2022.kea'
-    gdal_format = 'KEA'
-    gdaltype = rsgislib.TYPE_32FLOAT
-    rsgislib.imageutils.subset_to_img(cls_img, roi_img, out_cls_img, gdal_format, gdaltype)
-    # subset cls_img to input img
-    
+    feature = h3_cells[h3_cells['index'] == cell_id]
+    msk_img_by_gpd(feature, cls_img, cls_folder)
+
 
     ## CREATE OUTPUT FOLDERS ##
     # define outputs folder path
@@ -77,13 +106,14 @@ def process_change_for_cell(cell_folder):
         os.makedirs(tmp)
 
     ## DEFINE INPUTS ##
-    # get input folder
-    img_folder = f'{cell_folder}/inputs'
-    print(img_folder)
 
-    # get cell_id for subdir
-    cell_id = cell_folder.split('/')[-1]
-    print(cell_id)
+    # get input folder
+    # if input_folder is none inputs will be in cell folder
+    if inputs_folder == None:
+        img_folder = f'{cell_folder}/inputs'
+    else:
+        img_folder = return_input_imgs_folder(cell_id, inputs_folder) ## img_folder comes from HR5 directory using return_input_imgs_folder() 
+    print(img_folder)
 
     # define class_img, ndvi and mndwi bands and class_vals
     cls_img = f'{cell_folder}/inputs/classification/cls-img.kea'
@@ -175,6 +205,19 @@ def process_change_for_cell(cell_folder):
             chg_variables['area_change_iw (Ha)'] = np.nan
             chg_variables['area_change_eov (Ha)'] = np.nan
 
+        # add class areas from new class image
+        try:
+            cls_areas = boundary_functions.return_new_class_area(new_class_img)
+
+            # add cls areas to variables dict
+            chg_variables['sand_area'] = cls_areas['sand_area']
+            chg_variables['water_area'] = cls_areas['water_area']
+            chg_variables['vegetation_area'] = cls_areas['vegetation_area']
+        
+        except:
+            chg_variables['sand_area'] = np.nan
+            chg_variables['water_area'] = np.nan
+            chg_variables['vegetation_area'] = np.nan
 
         # append chg_variables to outputs_list
         outputs.append(chg_variables)
@@ -184,18 +227,49 @@ def process_change_for_cell(cell_folder):
     # create pandas dataframe of change results 
     df = pd.DataFrame.from_dict(outputs)
     # save results to csv with folder cell_id as fn
-    df.to_csv(f'/Users/ben/Desktop/national-scale-change/HR5-change-cells/results/{cell_id}-results.csv')
+    df.to_csv(f'/Users/ben/Desktop/national-scale-change/HR6-run-2/results/{cell_id}-results.csv')
+
+def process_mp(cell_folder, h3_shp, inputs_folder):
+    try:
+        # generate cls img
+        process_change_for_cell(cell_folder, h3_shp=h3_shp, inputs_folder=inputs_folder)
+    except:
+        pass
 
 ### run processing ###
 if __name__ == '__main__':
     # define start time
     start = time.time()
 
+    hr6_dir_path = '/Users/ben/Desktop/national-scale-change/HR6-run-2'
+    hr6_dir = os.path.abspath(hr6_dir_path)
+    if not os.path.exists(hr6_dir):
+        os.makedirs(hr6_dir)
+    
+    # make data folder
+    data_dir_path = f'{hr6_dir}/data'
+    data_dir = os.path.abspath(data_dir_path)
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+
+    ### Create folder structure for HR6-run-2
+    Hr6_gdf = gpd.read_file('global-inputs/HR6-change-cells-aoi.gpkg')
+
+    cell_list = list(Hr6_gdf['index'])
+
+    # for cell_id in cell_list:
+    #     # read hr6 shape and generate list of cell id and create folder structure 
+    # # create cls folder path
+    #     cls_folder_path = f'{data_dir}/{cell_id}'
+    #     cls_folder = os.path.abspath(cls_folder_path)
+    #     if not os.path.exists(cls_folder):
+    #         os.makedirs(cls_folder)
+
     # define main directtory
-    hr5_dir = '/Users/ben/Desktop/national-scale-change/HR5-change-cells/data'
+    hr5_dir = '/Users/ben/Desktop/national-scale-change/HR5-run-2/data'
 
     # generate list of folders
-    cell_list = glob.glob(f'{hr5_dir}/*')
+    cell_list = glob.glob(f'{data_dir}/*')
     print(len(cell_list))
 
     # chunk list into portions of 10
@@ -203,9 +277,9 @@ if __name__ == '__main__':
 
     print(cell_lst_chunks)
 
-    # iterate over chunks processing in parallel
+    #iterate over chunks processing in parallel
     for chunk in cell_lst_chunks:
-        process_map(process_change_for_cell, chunk, max_workers=7)
+        process_map(partial(process_mp, h3_shp='global-inputs/HR6-change-cells-aoi.gpkg', inputs_folder=hr5_dir), chunk, max_workers=7)
 
     end = time.time()
     elapsed = end - start

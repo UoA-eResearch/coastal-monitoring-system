@@ -88,13 +88,25 @@ def run_boundary_analysis_for_cell(cell_folder, output_folder):
         except:
             chg_variables['area_change_iw (Ha)'] = np.nan
             chg_variables['area_change_eov (Ha)'] = np.nan
+        
+        # add class areas from new class image
+        try:
+            cls_areas = boundary_functions.return_new_class_area(new_class_img)
 
+            # add cls areas to variables dict
+            chg_variables['sand_area'] = cls_areas['sand_area']
+            chg_variables['water_area'] = cls_areas['water_area']
+            chg_variables['vegetation_area'] = cls_areas['vegetation_area']
+        
+        except:
+            chg_variables['sand_area'] = np.nan
+            chg_variables['water_area'] = np.nan
+            chg_variables['vegetation_area'] = np.nan
 
         # append chg_variables to outputs_list
         outputs_list.append(chg_variables)
         
-        
-        
+       
     # create pandas dataframe of change results 
     df = pd.DataFrame.from_dict(outputs_list)
     # save results to csv with folder cell_id as fn
@@ -144,11 +156,13 @@ def chunk_iterable(iterable, chunk_size):
 
 def process_mp(cell_folder, output_folder):
 
-    # run_boundary_analysis_for_cell(cell_folder, 
-    # output_folder=output_folder)
-
     run_chg_pixels_for_cell(cell_folder, 
     output_folder=output_folder)
+
+    run_boundary_analysis_for_cell(cell_folder, 
+    output_folder=output_folder)
+
+    
 
 
 
@@ -158,12 +172,12 @@ if __name__ == '__main__':
     start = time.time()
 
     # create output folder
-    out_dir_fp = '/Users/ben/Desktop/national-scale-change/HR5/cell-metrics'
+    out_dir_fp = '/Users/ben/Desktop/national-scale-change/HR5-run-2/results'
     if not os.path.exists(out_dir_fp):
         os.makedirs(out_dir_fp)
 
     # return list of cell indexes
-    index_list = glob.glob('/Users/ben/Desktop/national-scale-change/HR5/data/*') 
+    index_list = glob.glob('/Users/ben/Desktop/national-scale-change/HR5-run-2/data/*') 
 
     print(index_list)
 

@@ -57,7 +57,7 @@ def return_stats(input_img, img_band, cls_img, cls_val, below_thres=True):
         pass
 
 
-def return_array(input_img, img_band, cls_img, cls_val):
+def return_array(input_img, img_band, cls_img, cls_val, no_data_val=-99):
     """
     function that returns array of the input image values that are contained within the specified landcover class
 
@@ -68,7 +68,7 @@ def return_array(input_img, img_band, cls_img, cls_val):
 
     return - np.array of image values for given class
     """
-    array = rsgislib.imageutils.extract_img_pxl_vals_in_msk(input_img, [img_band], cls_img, cls_val)
+    array = rsgislib.imageutils.extract_img_pxl_vals_in_msk(input_img, [img_band], cls_img, cls_val, no_data_val=no_data_val)
     return array
 
         

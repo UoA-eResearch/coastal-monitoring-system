@@ -307,3 +307,25 @@ def return_new_class_image(folder, output_cls_img):
         ratDataset = None
     except:
         pass
+
+def return_new_class_area(new_cls_img):
+    """
+    function to return estimated area from new class image generated from change outputs for a given year. 
+
+    returns - dictionary containing area of sand water and vegetation in hectares
+    """
+    # count pixels for each class in image
+    counts = imagecalc.count_pxls_of_val(new_cls_img, [1,2,3], 1)
+
+    # get img res
+    xRes, yRes = rsgislib.imageutils.get_img_res(new_cls_img)
+
+    # define area of class in hectares
+    sand = (counts[0]*(abs(xRes)*abs(yRes)))/10000
+    water = (counts[1]*(abs(xRes)*abs(yRes)))/10000
+    veg = (counts[2]*(abs(xRes)*abs(yRes)))/10000
+
+
+    return {'sand_area': sand,
+            'water_area': water,
+            'vegetation_area':veg}

@@ -9,25 +9,36 @@ import glob
 
 
 # generate list of imgs
-img_list = glob.glob('/Users/ben/Desktop/national-scale-change/HR6/data/*/boundary-analysis/outputs/2022-chg-pixels.kea',
+img_list = glob.glob('/Users/ben/Desktop/national-scale-change/HR5-change-cells/data/*/boundary-analysis/outputs/2022-chg-pixels.kea',
                       recursive =True)
 
 print(len(img_list))
 
-out_img = '/Users/ben/Desktop/national-scale-change/HR6/2022-chg-pixels.kea'
+out_img = '/Users/ben/Desktop/national-scale-change/HR5-run-2/validation/sentinel-cells-chg-pixels.kea'
 
-out_img_3857 = '/Users/ben/Desktop/national-scale-change/validation/HR6/2022-chg-pixels-3857.kea'
+#out_img_3857 = '/Users/ben/Desktop/national-scale-change/HR5/cell-chg-pixels-3857-aoi-masked.kea'
 
+# mosiac chg images
 image_utils.mosaic(img_list, out_img, nodataVal=0)
 rsgislib.imageutils.pop_img_stats(out_img,True,0,True)
-rsgislib.imageutils.gdal_warp(out_img,out_img_3857, 3857, gdalformat='KEA')
-rsgislib.imageutils.pop_img_stats(out_img_3857,True,0,True)
+
+# mask run-1 output with new AOI to get a proportion correct that is comparable
+# mask_img = '/Users/ben/Desktop/defining-aoi/AOI.kea'
+
+# out_img_msk = '/Users/ben/Desktop/national-scale-change/HR5/cell-chg-pixels-aoi-masked.kea'
+
+# rsgislib.imageutils.mask_img(out_img, mask_img, out_img_msk, 'KEA', rsgislib.TYPE_16UINT, 0, [0])
+# rsgislib.imageutils.pop_img_stats(out_img_msk, True, 0.0, True)
+
+
+# rsgislib.imageutils.gdal_warp(out_img_msk,out_img_3857, 3857, gdalformat='KEA')
+# rsgislib.imageutils.pop_img_stats(out_img_3857,True,0,True)
 
 # populate classification with class names for validation
-rsgislib.rastergis.pop_rat_img_stats(out_img_3857, add_clr_tab=True, calc_pyramids=True, ignore_zero=True)
+rsgislib.rastergis.pop_rat_img_stats(out_img, add_clr_tab=True, calc_pyramids=True, ignore_zero=True)
 
     
-ratDataset = gdal.Open(out_img_3857, gdal.GA_Update)
+ratDataset = gdal.Open(out_img, gdal.GA_Update)
 red = rat.readColumn(ratDataset, 'Red')
 green = rat.readColumn(ratDataset, 'Green')
 blue = rat.readColumn(ratDataset, 'Blue')
@@ -67,16 +78,16 @@ rat.writeColumn(ratDataset, 'ClassName', ClassName)
 ratDataset = None
 
 # generate accuracy points
-rsgislib.classification.generate_stratified_random_accuracy_pts(
-    input_img=out_img_3857,
-    out_vec_file='/Users/ben/Desktop/national-scale-change/validation/HR6/accuracy-points-2022.gpkg',
-    out_vec_lyr='accuracy-points',
+# rsgislib.classification.generate_random_accuracy_pts(
+#     input_img=out_img,
+#     out_vec_file='/Users/ben/Desktop/national-scale-change/HR6-run-2/validation/points/landsat-accuracy-points-random.gpkg',
+#     out_vec_lyr='accuracy-points',
 
-    out_format='GPKG',
-    rat_class_col='ClassName',
-    vec_class_col='cls-pts',
-    vec_ref_col='ref-pts',
-    num_pts=1000,
-    seed=35,
-    del_exist_vec=True
-    )
+#     out_format='GPKG',
+#     rat_class_col='ClassName',
+#     vec_class_col='cls-pts',
+#     vec_ref_col='ref-pts',
+#     num_pts=2500,
+#     seed=35,
+#     del_exist_vec=True
+#     )
