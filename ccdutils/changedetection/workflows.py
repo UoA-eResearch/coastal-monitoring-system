@@ -1,6 +1,6 @@
 import os
 import shutil
-from change_detection import change_functions
+from ccdutils.changedetection import tools
 
 
 ### FUNCTION TO RETURN CHANGE USING OTSU OUTLIERS METHOD ON CLASS-BY-CLASS BASIS ####
@@ -23,11 +23,11 @@ def return_change_output_otsu(input_img, class_img, out_folder, cell_id, ndvi_ba
 
     # generate sand-water-class-img by removing opposing boundary
     sand_water_class_img = os.path.join(tmp, 'water-sand-cls-img.kea')
-    change_functions.mask_opposing_boundary_pixels(class_img, sand_water_class_img, tmp, [class_vals['water'],4,5]) # 
+    tools.mask_opposing_boundary_pixels(class_img, sand_water_class_img, tmp, [class_vals['water'],4,5]) # 
 
     # generate sand-veg-class-img by remocing opposing boundary
     sand_veg_class_img = os.path.join(tmp, 'veg-sand-cls-img.kea')
-    change_functions.mask_opposing_boundary_pixels(class_img, sand_veg_class_img, tmp, [class_vals['vegetation'],4,5])
+    tools.mask_opposing_boundary_pixels(class_img, sand_veg_class_img, tmp, [class_vals['vegetation'],4,5])
     
     # return chg outputs for all classes
     # create dict of inputs
@@ -66,7 +66,7 @@ def return_change_output_otsu(input_img, class_img, out_folder, cell_id, ndvi_ba
         else:
             low_thres = True
         
-        stats = change_functions.return_stats(input_img, val, in_class_img, cls, below_thres=low_thres)
+        stats = tools.return_stats(input_img, val, in_class_img, cls, below_thres=low_thres)
         # continue if class is not present in hex cell
         if stats is None:
             print('class not present in cell: {}'.format(cell_id))
@@ -74,7 +74,7 @@ def return_change_output_otsu(input_img, class_img, out_folder, cell_id, ndvi_ba
 
         # identify change pixels
         try:
-            change_functions.find_class_otsu_outliers(input_img, in_class_img, chg_img, low_thres, cls,
+            tools.find_class_otsu_outliers(input_img, in_class_img, chg_img, low_thres, cls,
                                     val, -999, 'KEA', None) 
         except:
             pass
@@ -82,12 +82,12 @@ def return_change_output_otsu(input_img, class_img, out_folder, cell_id, ndvi_ba
         # return chg_img with boundary for sand change images
         if key[:4] == 'sand':
             out_img = os.path.join(tmp, '{}.kea'.format(key))
-            change_functions.return_chg_img_with_boundary(chg_img, class_img, out_img)
+            tools.return_chg_img_with_boundary(chg_img, class_img, out_img)
         else:
             pass
    
     # check tmp folder to see which outputs indicate chg and move to out_folder
-    change_functions.return_chg_outputs(tmp, out_folder)    
+    tools.return_chg_outputs(tmp, out_folder)    
     # remove tmp folder
     #shutil.rmtree(tmp)
 
@@ -114,14 +114,14 @@ def return_change_output_otsu_merged_classes(input_img, class_img, out_folder, c
     sand_water_class_img = os.path.join(tmp, 'water-sand-cls-img.kea')
     # define mask val based on cls to be masked
     #msk_val = class_vals['vegetation']
-    change_functions.mask_opposing_class(class_img, sand_water_class_img, [class_vals['vegetation'], 4, 5]) # 
+    tools.mask_opposing_class(class_img, sand_water_class_img, [class_vals['vegetation'], 4, 5]) # 
 
     # generate sand-veg-class-img by remocing opposing class
     # define masked class img
     sand_veg_class_img = os.path.join(tmp, 'veg-sand-cls-img.kea')
     # define mask val based on cls to be masked
     #msk_val = class_vals['water']
-    change_functions.mask_opposing_class(class_img, sand_veg_class_img, [class_vals['water'], 4,5])
+    tools.mask_opposing_class(class_img, sand_veg_class_img, [class_vals['water'], 4,5])
     
     # return chg outputs for all classes
     # create dict of inputs
@@ -146,7 +146,7 @@ def return_change_output_otsu_merged_classes(input_img, class_img, out_folder, c
         print('img: ', val)
 
         try:
-            stats = change_functions.return_stats(input_img, val, in_class_img, cls, below_thres=low_thres)
+            stats = tools.return_stats(input_img, val, in_class_img, cls, below_thres=low_thres)
         # continue if class is not present in hex cell
             if stats is None:
                 print('class not present in cell: {}'.format(cell_id))
@@ -158,9 +158,9 @@ def return_change_output_otsu_merged_classes(input_img, class_img, out_folder, c
         try:
             # below_thres = False = sand will have a value of 1 and water and vegetation will be 2
             low_thres = False
-            change_functions.find_class_otsu_outliers(input_img, in_class_img, chg_img, low_thres, cls,
+            tools.find_class_otsu_outliers(input_img, in_class_img, chg_img, low_thres, cls,
                                     val, -99, 'KEA', None) 
-            change_functions.sieve(chg_img, chg_img, 10)
+            tools.sieve(chg_img, chg_img, 10)
         except:
             pass
 

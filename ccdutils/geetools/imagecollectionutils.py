@@ -1,9 +1,9 @@
 # import modules
 import ee
-import geeutils.feature_utils as feature_utils
-import geeutils.image_utils as image_utils
-import geeutils.sentinel2_utils as s2_utils
-import geeutils.landsat_utils as landsat_utils
+import ccdutils.geetools.featureutils as featureutils
+import ccdutils.geetools.imageutils as imageutils
+import ccdutils.geetools.s2utils as s2_utils
+import ccdutils.geetools.lsutils as lsutils
 
 # Initialize GEE
 ee.Initialize()
@@ -89,7 +89,7 @@ def gen_imageCollection_from_shp(year, region_shp, sensor):
     print("Generating composite image for {} for {}".format(sensor, year))
 
     # convert region to ee.featureCollection 
-    roi = feature_utils.shp_to_featureCollection(region_shp)
+    roi = featureutils.shp_to_featureCollection(region_shp)
 
     # define sr image collection
     collection = ee.ImageCollection(sensor_id[sensor][0]) \
@@ -163,7 +163,7 @@ def gen_imageCollection(year, roi, sensor, cloud_cover=None, surface_reflectance
                 
                 # run landsat cloudmasking and rename bands
                 img_collection = (collection 
-                        .map(landsat_utils.mask_clouds_LS_qa) 
+                        .map(lsutils.mask_clouds_LS_qa) 
                         .map(rename_img_bands(sensor)))
 
         return img_collection
