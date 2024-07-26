@@ -2,11 +2,9 @@
 import ee
 import ccdutils.geetools.featureutils as featureutils
 import ccdutils.geetools.imageutils as imageutils
-import ccdutils.geetools.s2utils as s2_utils
+import ccdutils.geetools.s2utils as s2utils
 import ccdutils.geetools.lsutils as lsutils
-
-# Initialize GEE
-ee.Initialize()
+from datetime import datetime, timedelta
 
 # define global variables
 # define valid sensors
@@ -25,7 +23,7 @@ img_bands = {'S2': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7','B8', 'B8A', 'B11', 'B12'
         'S1': ['HH', 'HV', 'VV', 'VH', 'angle']}
 
 # dict containing sensor GEE snippets for optical collections store SR and TOA collections as list
-sensor_id = {'S2': ['COPERNICUS/S2_SR', 'COPERNICUS/S2'],
+sensor_id = {'S2': ['COPERNICUS/S2_SR_HARMONIZED', 'COPERNICUS/S2_HARMONIZED'],
         'LS4': ['LANDSAT/LT04/C02/T1_L2', 'LANDSAT/LT04/C02/T1_TOA'],     
         'LS5': ['LANDSAT/LT05/C02/T1_L2', 'LANDSAT/LT05/C02/T1_TOA'],
         'LS7': ['LANDSAT/LE07/C02/T1_L2', 'LANDSAT/LE07/C02/T1_TOA'],
@@ -138,15 +136,15 @@ def gen_imageCollection(year, roi, sensor, cloud_cover=None, surface_reflectance
                         collection = collection.filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', cloud_cover)
                 
                 # join sentinel cloud probabilty
-                img_collection = s2_utils.join_S2_cld_prob(collection, roi, start_date, end_date)
+                img_collection = s2utils.join_S2_cld_prob(collection, roi, start_date, end_date)
 
                 # map cloud masking workflow over collection
                 img_collection = (img_collection 
                         # add is_clouds band
-                        .map(s2_utils.add_cloud_shadow_mask) 
+                        .map(s2utils.add_cloud_shadow_mask) 
                         # add cloud_shdw_mask # use default buffer value (50m)
                         # mask clouds
-                        .map(s2_utils.mask_clouds)
+                        .map(s2utils.mask_clouds)
                         # rename bands
                         .map(rename_img_bands(sensor)))
                 
@@ -209,3 +207,53 @@ def return_least_cloudy_image(year, roi, sensor, cloud_cover=None, return_least_
                         .map(rename_img_bands(sensor))
 
         return ee.Image(collection.first())
+
+def gen_s2_image_collection_for_region(date, time_step, roi, cloud_cover=0.10, cloud_prob_score=60):
+        """
+        function to return s2 surface reflectance image collection defined by region where cloud cover is calculated for region.
+        Args
+        date - date as yyyy-mm-dd 
+        time_step - integer indicating number of weeks from date to filter the image collection
+        roi - ee.featureCollection object defining region 
+        cloud_cover - float representing % cloud cover for region to be included in collection default=10
+        cloud_prob_score - integer representing value at which a pixel is considered cloud in sentinel-2 cloud probablity mask
+        pxl_size - 
+        """
+        # define dates as str
+        start_date = (datetime.strptime(date, "%Y-%m-%d") - timedelta(weeks=time_step)).strftime("%Y-%m-%d")
+
+        print(f"Looking for images between {start_date} and {date}")
+
+        # define image collection
+        # # define sr image collection
+        img_collection = (ee.ImageCollection(sensor_id['S2'][0]) 
+                .filterBounds(roi) 
+                .filterDate(start_date, date))
+
+        # join sentinel cloud probabilty image and add cloud band 
+        img_collection = (s2utils.join_S2_cld_prob(img_collection, roi, start_date, date)
+                        .map(rename_img_bands('S2')) # select required bands and rename
+                        .map(s2utils.add_cloud_bands_to_img_collection(cloud_prob_score)) # adds cloud band based on cloud_prob_score
+                        .map(imageutils.clip_images_to_region(roi))) # clip to region/cell
+        
+        print(f"number of avaiable images: {img_collection.size().getInfo()}")
+
+        # calc pxl counts for cloud mask and total region
+        img_collection = (img_collection.map(s2utils.return_region_pxl_count)
+                        .map(s2utils.return_cloud_pxl_count)
+                        .map(s2utils.add_cell_level_cloud_cover_property)
+                        .filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
+
+        # perform cloud masking
+        img_collection = (img_collection 
+                # add is_clouds band
+                .map(s2utils.add_cloud_shadow_mask) 
+                # add cloud_shdw_mask # use default buffer value (50m)
+                # mask clouds
+                .map(s2utils.mask_clouds)
+                # rename bands
+                #.map(rename_img_bands('S2')))
+                )
+        return img_collection
+
+  

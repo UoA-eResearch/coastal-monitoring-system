@@ -91,9 +91,12 @@ def download_img_local(ee_image, folder, name, region, crs, scale, format='GEO_T
     """
     
     # get bandnames
-
     bands = ee_image.bandNames().getInfo()
-    #print(bands)
+
+    # join folder and file name
+    down_path = os.path.join(folder, name)
+    
+    # define params to be parsed to getDownloadUrl
     params = {
         'bands': bands,
         'region': region,
@@ -101,9 +104,7 @@ def download_img_local(ee_image, folder, name, region, crs, scale, format='GEO_T
         'scale': scale,
         'format': format
     }
-    # join folder and file name
-    down_path = os.path.join(folder, name)
-
+    
     # define url
     try: 
         url = ee_image.getDownloadUrl(params)
@@ -126,6 +127,7 @@ def download_img_local(ee_image, folder, name, region, crs, scale, format='GEO_T
 
     # set band names
     set_band_names(down_path, bands)
+
 
 def set_nodata_val(image, no_data_val):
     """
@@ -170,3 +172,13 @@ def mosaic(inputImageList, output_image, nodataVal=-99, outputFormat='KEA', data
     rsgislib.imageutils.create_img_mosaic(inputImageList, output_image, nodataVal, innodataVal, skipBand, overlapBehaviour, outputFormat, dataType)
     rsgislib.imageutils.set_band_names(output_image, bandNames)
     set_nodata_val(output_image, nodataVal)
+
+def clip_images_to_region(region):
+    """
+    function to clip images in ee.ImageCollection using .map() to region defined by featureCollection
+    Args
+    region - ee.featureCollection representing the region to be clipped to. 
+    """
+    def clip(img):
+        return img.clipToCollection(region)
+    return(clip)

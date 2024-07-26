@@ -1,9 +1,6 @@
 # import modules
 import ee 
 
-# authenticate ee
-ee.Initialize()
-
 def mask_clouds_S2_QA60(image):
     """function to mask Sentinel-2 ee.Image object using QA60 band
 
@@ -51,7 +48,7 @@ def add_cloud_bands_to_img(image):
     # Add the cloud probability layer and cloud mask as image bands.
     return image.addBands(ee.Image([cld_prb, is_cloud]))
 
-def add_cloud_bands_to_img_collection(image):
+def add_cloud_bands_to_img_collection(cloud_prob_threshold=60):
     """
     function to add cloud bands to images in ee.ImageCollection as a .map() function
     args 
@@ -60,17 +57,18 @@ def add_cloud_bands_to_img_collection(image):
     returns
     ee.ImageCollection with cloud band
     """
-    cloud_prob_threshold=60
-    # function to add cloud_band to images in ee.ImageCollection
     
-    # get cloud prob from cloud_mask img
-    cld_prb = ee.Image(image.get('cloud_mask')).select('probability')
+    # function to add cloud_band to images in ee.ImageCollection
+    def add_cld_bands(image):
+        # get cloud prob from cloud_mask img
+        cld_prb = ee.Image(image.get('cloud_mask')).select('probability')
 
-    # Condition s2cloudless by the probability threshold value.
-    is_cloud = cld_prb.gt(cloud_prob_threshold).rename('clouds')
+        # Condition s2cloudless by the probability threshold value.
+        is_cloud = cld_prb.gt(cloud_prob_threshold).rename('clouds')
 
-    # Add the cloud probability layer and cloud mask as image bands.
-    return image.addBands(ee.Image([cld_prb, is_cloud]))
+        # Add the cloud probability layer and cloud mask as image bands.
+        return image.addBands(ee.Image([cld_prb, is_cloud]))
+    return(add_cld_bands)
 
 
 def add_shadow_bands_to_img_collection(nir_drk_thresh=0.15):
@@ -110,7 +108,7 @@ def add_shadow_bands_to_img(image):
     nir_drk_thresh = 0.15
     # Identify dark NIR pixels that are not water (potential cloud shadow pixels).
     SR_BAND_SCALE = 1e4
-    dark_pixels = image.select('B8').lt(nir_drk_thresh*SR_BAND_SCALE).rename('dark_pixels')
+    dark_pixels = image.select('NIR').lt(nir_drk_thresh*SR_BAND_SCALE).rename('dark_pixels')
 
     # Determine the direction to project cloud shadow from clouds (assumes UTM projection).
     shadow_azimuth = ee.Number(90).subtract(ee.Number(image.get('MEAN_SOLAR_AZIMUTH_ANGLE')))
@@ -175,7 +173,7 @@ def add_cld_shdw_mask_to_img_collection(buffer=50):
             # Remove small cloud-shadow patches and dilate remaining pixels by BUFFER input.
             # 20 m scale is for speed, and assumes clouds don't require 10 m precision.
             is_cld_shdw = (is_cld_shdw.focalMin(2).focalMax(buffer*2/20)
-                .reproject(**{'crs': img.select([0]).projection(), 'scale': 20})
+                .reproject(**{'crs': img.select([0]).projection(), 'scale': 10})
                 .rename('cloudmask'))
 
             # Add the final cloud-shadow mask to the image.
@@ -217,11 +215,12 @@ def join_S2_cld_prob(img_collection, roi, start_date, end_date):
     ))
 
 def add_cloud_shadow_mask(img):
-    # add cloud bands
-    img_cloud = add_cloud_bands_to_img_collection(img)
+    try:
+        img.select("clouds") # get cloud band from image which is last band
+    except:
+        img = add_cloud_bands_to_img(img)
 
-    # add cloud shadow bands
-    img_cloud_shadow = add_shadow_bands_to_img(img_cloud)
+    img_cloud_shadow = add_shadow_bands_to_img(img) # add cloud shadow bands
 
     # Combine cloud and shadow mask, set cloud and shadow as value 1, else 0.
     is_cld_shdw = img_cloud_shadow.select('clouds').add(img_cloud_shadow.select('shadows')).gt(0)
@@ -229,11 +228,47 @@ def add_cloud_shadow_mask(img):
     # Remove small cloud-shadow patches and dilate remaining pixels by BUFFER input.
     # 20 m scale is for speed, and assumes clouds don't require 10 m precision.
     is_cld_shdw = (is_cld_shdw.focalMin(2).focalMax(50*2/20)
-        .reproject(**{'crs': img.select([0]).projection(), 'scale': 20})
+        .reproject(**{'crs': img.select([0]).projection(), 'scale': 10})
         .rename('cloudmask'))
 
     # Add the final cloud-shadow mask to the image.
     return img_cloud_shadow.addBands(is_cld_shdw)
+
+def return_cloud_pxl_count(img):
+    """"
+    function to return number of cloudy pixels in sentinel-2 image. Image must contain cloud mask band defined by cld_band_name
+    """
+    cloud_mask = img.select('clouds') # cloud band is called clouds
+    band =  img.bandNames().get(0) # define first band name from image
+    # updateMask to ensure only count of cloudy pixels are returned
+    mask_img = img.updateMask(cloud_mask)
+    pxl_count = mask_img.reduceRegion(
+        reducer=ee.Reducer.count(),
+        geometry=img.geometry(),
+        maxPixels=1e10
+    )
+    return img.set('mask_pixel_count', ee.Number(pxl_count.get(band)))
+
+def return_region_pxl_count(img):
+    """
+    function to return number of pixels in image, based on one band in image defined by band_name. 
+    """
+    # def calc_pxl_count(img):
+    band = img.bandNames().get(0) # define first band name from image
+    pxl_count = img.reduceRegion(
+        reducer=ee.Reducer.count(),
+        geometry=img.geometry(),
+        maxPixels=1e10
+    )
+    return img.set('total_pixel_count', ee.Number(pxl_count.get(band)))
+
+def add_cell_level_cloud_cover_property(img):
+    """
+    function to return cell level cloud cover as image metadata property.
+    """
+    return img.set('region_cloudy_percent', ee.Number(img.get('mask_pixel_count')).divide(ee.Number(img.get('total_pixel_count'))))
+
+
 
 
 

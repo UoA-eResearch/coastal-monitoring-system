@@ -1,6 +1,6 @@
 # import modules
 import ee
-import geemap
+
 
 # authenticate ee
 ee.Initialize()
@@ -40,20 +40,5 @@ def apply_scale_factors(image):
 
     return image.addBands(opticalBands, None, True) \
               .addBands(thermalBands, None, True)
-
-def ps_pca(sensor, geometry):
-    """
-    function to pan sharpen LS7 and LS8 images with PCA method using geeSharp
-    https://github.com/aazuspan/geeSharp/wiki/Sharpening-Functions#PCA
-
-    args
-    sensor - string defining whether its LS7 or LS8
-    geometry - ee.Geometry defining region to calculate imagery stats for (will come from h3 cell)
-    """
-    # use geemap.require to get JS package
-    geeSharp = geemap.require("users/aazuspan/geeSharp:geeSharp")
-
-    # define pan band and bands to be sharpened
-
 
     
