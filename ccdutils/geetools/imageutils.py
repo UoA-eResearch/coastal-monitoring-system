@@ -8,6 +8,8 @@ import requests
 from osgeo import gdal 
 import rsgislib
 import rsgislib.imageutils
+from pyproj import Transformer
+import json
 
 
 # Initialize GEE
@@ -182,3 +184,77 @@ def clip_images_to_region(region):
     def clip(img):
         return img.clipToCollection(region)
     return(clip)
+
+def transform_coordinates(input_coordinates, input_crs, target_crs="EPSG:2193"):
+    """
+    function to transform and return latitude, longitude coordinates from one CRS to another
+    Args
+    input_coordinates - list containing latitude, longitude to be transformed
+    input_crs - crs of input coordinates
+    target_crs - crs of returned latitude, longitude 
+    Returns
+    latitude, longitude in target_crs
+    """
+    transform = Transformer.from_crs(input_crs, target_crs) # tranformer from pyproj
+
+    lon, lat = transform.transform(input_coordinates[0], input_coordinates[1])
+
+    return lon, lat
+
+def return_tide_level_for_image(img, API_KEY):
+    """
+    function to return tide level for image using the niwa tide API and image metadata properties 
+    and return tide level as image property 
+    Args
+    img - ee.Image object - all parameters acquired from image metadata properties
+        - input_crs - from image_crs
+        - lat - from image_centroid_coordinates
+        - long - from image_centroid_coordinates
+        - startDate - from date_string
+        - interval - from interval_minutes
+    """
+    # define API params
+    URL = "https://api.niwa.co.nz/tides/data"
+    headers = {"x-apikey": API_KEY,
+               "Accept": "application/json"}
+
+    # define parameters for tide api 
+    parameters = {"lat": img.get('image_centroid_lat').getInfo(),
+                  "long": img.get('image_centroid_lon').getInfo(),
+                  "numberOfDays": 1, # only need to return tide for date & interval provided.
+                  "startDate": img.get('date_string').getInfo(),
+                  "datum": "MSL", # set to return tide relative to mean sea level
+                  "interval": int(img.get('interval_minutes').getInfo())
+    }
+    
+    # run in a while loop to in case rate limit exceeded on API
+    total_retries = 3
+    retries = 0
+    while retries < total_retries:
+        try:
+            r = requests.get(URL, params=parameters, headers=headers) # get response from niwa tide API
+
+            if r.status_code == 429:
+                sleep_seconds = int(r.headers["Retry-After"])
+                # sleep for x seconds to refresh the count
+                print(f'Num of API reqs exceeded, Sleeping for: {sleep_seconds} seconds...')
+                time.sleep(sleep_seconds)
+                retries += 1
+            else:
+                tide_level = r.json()['values'][0]['value'] # return tide_level from response
+                img = img.set("tide_level_msl", ee.Number(tide_level))
+                break
+        except requests.exceptions.Timeout:
+            print("request timed out. Consider handling this case.")
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred: {e}")
+
+    return img
+
+
+    
+
+
+
+
+

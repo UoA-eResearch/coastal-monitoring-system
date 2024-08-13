@@ -5,6 +5,10 @@ import ccdutils.geetools.imageutils as imageutils
 import ccdutils.geetools.s2utils as s2utils
 import ccdutils.geetools.lsutils as lsutils
 from datetime import datetime, timedelta
+import tqdm
+from tqdm.contrib.concurrent import thread_map
+from itertools import repeat
+
 
 # define global variables
 # define valid sensors
@@ -236,13 +240,15 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_cover=0.10, c
                         .map(s2utils.add_cloud_bands_to_img_collection(cloud_prob_score)) # adds cloud band based on cloud_prob_score
                         .map(imageutils.clip_images_to_region(roi))) # clip to region/cell
         
-        print(f"number of avaiable images: {img_collection.size().getInfo()}")
+        print(f"number of available images: {img_collection.size().getInfo()}")
 
         # calc pxl counts for cloud mask and total region
         img_collection = (img_collection.map(s2utils.return_region_pxl_count)
                         .map(s2utils.return_cloud_pxl_count)
                         .map(s2utils.add_cell_level_cloud_cover_property)
                         .filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
+        
+        print(f"number of cloud-free images: {img_collection.size().getInfo()}")
 
         # perform cloud masking
         img_collection = (img_collection 
@@ -250,10 +256,36 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_cover=0.10, c
                 .map(s2utils.add_cloud_shadow_mask) 
                 # add cloud_shdw_mask # use default buffer value (50m)
                 # mask clouds
-                .map(s2utils.mask_clouds)
-                # rename bands
-                #.map(rename_img_bands('S2')))
-                )
+                .map(s2utils.mask_clouds))
         return img_collection
+
+def add_tide_level_to_collection(ee_image_collection, roi, multithreading=False):
+        """
+        function to return tide level relative to MSL for all images in image colletion using the Niwa tide API
+        """
+
+        img_collection = (ee_image_collection.map(s2utils.add_roi_centroid_image_property(roi))
+                        .map(s2utils.return_image_acquisition_time))
+        
+        # add tide level to image
+        img_list = img_collection.toList(img_collection.size().getInfo()) # needs to be run as for loop due to mixing client/server operations
+
+        img_collection_tide_list = ee.List([]) # define empty ee.List
+
+        if multithreading == True:
+               def add_tide_level_to_collection_mt(img_id, list_of_images):
+                        img = ee.Image(list_of_images.get(img_id))
+                        img = imageutils.return_tide_level_for_image(img)
+                        return img
+               iterable = list(range(0, img_collection.size().getInfo()))
+               results = thread_map(add_tide_level_to_collection_mt, iterable, repeat(img_list))
+               img_collection_tide_list = ee.List(results)
+        else:
+                for i in tqdm.tqdm(range(img_collection.size().getInfo())): # iterate over images in list to return tide level
+                        img = ee.Image(img_list.get(i))
+                        img = imageutils.return_tide_level_for_image(img)
+                        img_collection_tide_list = img_collection_tide_list.add(img) # add to ee.List to generate collection with tide level property 
+
+        return ee.ImageCollection(img_collection_tide_list) # redefine image collection
 
   
