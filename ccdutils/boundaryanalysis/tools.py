@@ -2,6 +2,7 @@
 import rsgislib
 import rsgislib.rastergis
 import rsgislib.imageutils
+import rsgislib.imagemorphology
 from rsgislib import imagecalc
 import rsgislib.classification
 import numpy as np
@@ -51,36 +52,18 @@ def count_chg_pxls_in_boundary(chg_img, boundary_pxls_img, chg_vals):
     boundary_img - corresponding boundary image - veg for ndvi change and water for ndwi change
     chg_vals - dict of classes and corresponding values in change image e.g. 1 = sand 2 = water for ndwi change. 
     """
-    # extract boundary pixels
-    array = rsgislib.imageutils.extract_img_pxl_vals_in_msk(chg_img, [1], boundary_pxls_img, 1)
+    array = rsgislib.imageutils.extract_img_pxl_vals_in_msk(chg_img, [1], boundary_pxls_img, 1)  # extract boundary pixels
 
-    # get counts for each class and return as a nested array
-    cls, counts = np.unique(array, return_counts=True)
-    con = np.asarray((cls, counts)).T
+    cls, counts = np.unique(array, return_counts=True) # get counts for each class and wrtie to dict
+    count_dict = dict(zip(cls, counts))
+    
+    class_count_dict = {chg_vals.get(k,k):0 for k in chg_vals.values()} # assign class names to counts, if class not present in boundary should be 0
+    
+    class_count_dict.update({chg_vals.get(k,k):v for k, v in count_dict.items()})
+    class_count_dict = {k:v for k,v in class_count_dict.items() if k != 0} # remove nodata vals from dict 
+    class_count_dict["total"] = sum(class_count_dict.values()) # return sum of counts for total pixels in boundary
 
-    print(con)
-    
-    count_dict = {}
-    
-    for key, val in chg_vals.items():
-        count_dict[key] = 0
-        for i in con:
-            if i[0] == val:
-                count_dict[key] = i[1]
-    
-    # return total boundary pxls for %
-        try:
-            if con.shape == (3,2):
-                total = con[1] + con[2]
-                total = total[1]
-            else:
-                total = con[0] + con[1]
-                total = total[1]
-            count_dict['total'] = total
-        except:
-            count_dict['total'] = 0
-    
-    return count_dict
+    return class_count_dict
 
 def calc_cdi(input_chg_img, class_img, tmp, mask_vals, eov_boundary):
     """
@@ -92,48 +75,72 @@ def calc_cdi(input_chg_img, class_img, tmp, mask_vals, eov_boundary):
     mask_vals -  list, classification values to be masked
     eiv_boundary - boolean, if true analysis will be EOV if false will be IW boundary
     """
-    # return boundary image
-    boundary_img = return_boundary(class_img, tmp, mask_vals)
-
-    
     # define dict containing change values keys defined by eov_boundary
     if eov_boundary == True:
-            chg_values = {'vegetation': 2, 'sand': 1}
+            chg_values = {2: 'vegetation', 1:'sand'}
     else:
-        chg_values = {'water': 2, 'sand': 1}
-    # return count of change pixels in boundary
-    boundary_pxls = count_chg_pxls_in_boundary(input_chg_img, boundary_img, chg_values)
+        chg_values = {2:'water', 1:'sand'}
+
+    boundary_img = return_boundary(class_img, tmp, mask_vals)
+
+    boundary_pxls = count_chg_pxls_in_boundary(input_chg_img, boundary_img, chg_values) # Initialize counting pixels
+    iteration_count = 1 # track number of iterations starting at 1 to incl initial run. 
+
+    print(f"Initialised class count: {boundary_pxls}")
+
+    # check percentage of min pixel count to initialise iterations if required
+    min_pxls = min(boundary_pxls.values())
+    min_percent = (min_pxls/boundary_pxls['total']) 
+
+    # Loop until no zero values are present in boundary_pxls
+    if min_percent < 0.01:
+        print("a class less than 1 percent of total boundary pixels, starting iteration")
+        present_class = {key: value for key, value in boundary_pxls.items() if value != min_pxls and key != 'total'} 
+        class_name, class_pixel_count = next(iter(present_class.items()))
+        print(class_name, class_pixel_count)
+        while True: 
+            print(f"start of iteration: {iteration_count}")
+
+            dilated_img = f"{tmp}/dilated_boundary_{iteration_count}_{chg_values[2]}.kea"
+            rsgislib.imagemorphology.image_dilate(input_img=boundary_img, output_img=dilated_img, morph_op_file='', use_op_file=False, op_size=3, gdalformat='KEA', datatype=rsgislib.TYPE_32UINT)
+            boundary_img = dilated_img
+
+            print(f"current boundary image: {boundary_img}")
+            boundary_pxls = count_chg_pxls_in_boundary(input_chg_img, boundary_img, chg_values) # Return count of change pixels in boundary
+
+            print(f"new boundary image: {boundary_img}")
+            
+            # break at iteration n where initialised pixel count for class present in boundary is < the current pixel count / n iterations for that class.
+            print(f"initial class count: {class_pixel_count}")
+            print(f"new class count: {boundary_pxls[class_name]}")
+            print(f"end of iteration: {iteration_count}")
+            if (boundary_pxls[class_name]/iteration_count) < class_pixel_count: 
+                print(f"finished on iteration {iteration_count}. Calculating cdi...")
+                break
+            
+            iteration_count += 1
+    
+    else: 
+        print("minimum class contains more than 1 percent of total pixels. Calculating cdi...")
 
     # if boundary_pxls is not 0 calc cdi else cdi and est chg = np.nan
     # return cdi based based on eov_boundary
     if boundary_pxls['total'] != 0:
         if eov_boundary == True:
-            cdi = round((boundary_pxls['vegetation'] - boundary_pxls['sand']) / (boundary_pxls['vegetation'] + boundary_pxls['sand']), 3)
+            cdi = round(((boundary_pxls['vegetation'] - boundary_pxls['sand']) / (boundary_pxls['vegetation'] + boundary_pxls['sand']))*iteration_count, 3)
         else: 
-            cdi = round((boundary_pxls['sand'] - boundary_pxls['water']) / (boundary_pxls['sand'] + boundary_pxls['water']), 3)
+            cdi = round(((boundary_pxls['sand'] - boundary_pxls['water']) / (boundary_pxls['sand'] + boundary_pxls['water']))*iteration_count, 3)
         
         # calc estimated change
         # get img res
         xRes, yRes = rsgislib.imageutils.get_img_res(input_chg_img)
-        estimated_change = cdi * xRes
+        estimated_change = cdi * xRes # cdi * iterations to estimate change. 
     else:
         cdi = np.nan
         estimated_change = np.nan
 
-    # remove tmp folder 
-    #os.rmdir(tmp)
-
-    # define cdi key based on eov_boundary
-    if eov_boundary == True:
-        cdi_k = 'cdi_eov'
-        chg_k = 'est_eov_chg'
-    else:
-        cdi_k = 'cdi_iw'
-        chg_k = 'est_iw_chg'
-
     # return cdi_val and estimated chg
-    return {cdi_k: cdi, 
-            chg_k: estimated_change}
+    return cdi, estimated_change
 
 def return_chg_pixels(folder, initial_class_img, output_cls_img):
     """
@@ -141,16 +148,16 @@ def return_chg_pixels(folder, initial_class_img, output_cls_img):
     folder - folder containing ndwi and ndvi change images
     initial_class_img - initial classification image used in change detection analysis
 
-    returns output_cls_img - image containing 4 classes:
+    returns output_cls_img - image containing 5 classes:
                                             1 - water-sand change
                                             2 - sand-water change
                                             3 - vegetation-sand change
                                             4 - sand-vegetation change
+                                            5 - no change
     """
-    print(folder)
     try:
         # return ndwi and ndvi imgs
-        for img in glob.glob(folder + '/*.kea'):
+        for img in glob.glob(folder + '/*i-chg.kea'):
             print(img)
             if img.split('/')[-1][:4] == 'ndwi':
                 ndwi = img
@@ -195,7 +202,7 @@ def return_chg_pixels(folder, initial_class_img, output_cls_img):
         red[3] = 0
         blue[3] = 204
         green[3] = 0
-        ClassName[3] = 'Vegetation-sand'
+        ClassName[3] = 'vegetation-sand'
 
         red[4] = 0
         blue[4] = 5
@@ -232,16 +239,23 @@ def calc_area_change(change_pxls_img):
     veg_to_sand = counts[2]
     sand_to_veg = counts[3]
 
+    print(f"sand to water: {sand_to_water}")
+    print(f"water to sand: {water_to_sand}")
+
+    print(f"veg to sand: {veg_to_sand}")
+    print(f"sand to veg: {sand_to_veg}")
+
     # get img res
     xRes, yRes = rsgislib.imageutils.get_img_res(change_pxls_img)
+    xRes = abs(xRes)
+    yRes = abs(yRes)
 
     # define change for each set of classes as hectares
-    waterline_area_chg = (sand_to_water - water_to_sand)*(xRes*yRes)/10000
+    waterline_area_chg = (water_to_sand - sand_to_water)*(xRes*yRes)/10000
 
-    eov_area_chg = (veg_to_sand - sand_to_veg )*(xRes*yRes)/10000
+    eov_area_chg = (sand_to_veg - veg_to_sand)*(xRes*yRes)/10000
 
-    return {'area_iw': waterline_area_chg,
-            'area_eov': eov_area_chg}
+    return waterline_area_chg, eov_area_chg
 
 def return_new_class_image(folder, output_cls_img):
     """
@@ -255,7 +269,7 @@ def return_new_class_image(folder, output_cls_img):
     """
     print(folder)
     # return ndwi and ndvi imgs
-    for img in glob.glob(folder + '/*.kea'):
+    for img in glob.glob(folder + '/*i-chg.kea'):
         print(img)
         if img.split('/')[-1][:4] == 'ndwi':
             ndwi = img
@@ -326,6 +340,4 @@ def return_new_class_area(new_cls_img):
     veg = (counts[2]*(abs(xRes)*abs(yRes)))/10000
 
 
-    return {'sand_area': sand,
-            'water_area': water,
-            'vegetation_area':veg}
+    return sand, water, veg

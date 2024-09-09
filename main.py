@@ -2,6 +2,15 @@ import ccdutils.monitoringutils as monitoringutils
 import ee
 from datetime import datetime
 import time
+import glob
+import os
+
+
+# surpress TIFF warnings from gdal
+from osgeo import gdal
+# ... and suppress errors
+gdal.SetConfigOption('CPL_LOG', '/dev/null')
+os.environ["TQDM_DISABLE"] = "True"
 
 # init gee with project 
 ee.Initialize()
@@ -10,8 +19,15 @@ ee.Initialize()
 # Start time tracking
 start_time = time.time()
 
-# Download images
-monitoringutils.download_images_in_collection("data/inputs/vector/test.gpkg", "data/inputs/raster/pre_24-08-12")
+
+
+monitoringutils.download_images_in_collection("data/85bb58c7fffffff/valid_data_mask_cell.gpkg", "data/85bb58c7fffffff") # Download images
+
+monitoringutils.run_change_detection("data/85bb58c7fffffff") # run change detection
+
+
+
+
 
 # End time tracking
 end_time = time.time()

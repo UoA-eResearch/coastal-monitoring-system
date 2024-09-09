@@ -201,7 +201,7 @@ def transform_coordinates(input_coordinates, input_crs, target_crs="EPSG:2193"):
 
     return lon, lat
 
-def return_tide_level_for_image(img, API_KEY):
+def return_tide_level_for_image(img, API_KEY="wCHMADCr9RqEyoxHLIP6YUM95GiFRi1G"):
     """
     function to return tide level for image using the niwa tide API and image metadata properties 
     and return tide level as image property 

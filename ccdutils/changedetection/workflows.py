@@ -113,7 +113,6 @@ def return_change_output_otsu_merged_classes(input_img, class_img, out_folder, c
     # define masked class img
     sand_water_class_img = os.path.join(tmp, 'water-sand-cls-img.kea')
     # define mask val based on cls to be masked
-    #msk_val = class_vals['vegetation']
     tools.mask_opposing_class(class_img, sand_water_class_img, [class_vals['vegetation'], 4, 5]) # 
 
     # generate sand-veg-class-img by remocing opposing class
@@ -160,7 +159,7 @@ def return_change_output_otsu_merged_classes(input_img, class_img, out_folder, c
             low_thres = False
             tools.find_class_otsu_outliers(input_img, in_class_img, chg_img, low_thres, cls,
                                     val, -99, 'KEA', None) 
-            tools.sieve(chg_img, chg_img, 10)
+            tools.sieve(chg_img, chg_img, 75)
         except:
             pass
 

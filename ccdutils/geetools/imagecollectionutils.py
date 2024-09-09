@@ -287,5 +287,3 @@ def add_tide_level_to_collection(ee_image_collection, roi, multithreading=False)
                         img_collection_tide_list = img_collection_tide_list.add(img) # add to ee.List to generate collection with tide level property 
 
         return ee.ImageCollection(img_collection_tide_list) # redefine image collection
-
-  
