@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>New Zealand Coastal Landcover Change</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!-- Chroma for colour scheme -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"
+    integrity="sha512-zInFF17qBFVvvvFpIfeBzo7Tj7+rQxLeTJDmbxjBz5/zIr89YVbTNelNhdTT+/DCrxoVzBeUPVFJsczKbB7sew=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        html,
+        body,
+        #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .info {
+        padding: 6px 8px;
+        font: 11px/12px Arial, Helvetica, sans-serif;
+        background: white;
+        background: rgba(255,255,255,0.8);
+        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        border-radius: 5px;
+        }
+        .info h4 {
+            margin: 0 0 5px;
+            color: #777;
+        }
+        .info table, th, td {
+
+        border: 1px solid black;
+
+        border-collapse: collapse;
+
+        }
+
+        .info th, td {
+
+        padding: 10px;
+
+        }
+
+        .legend {
+            padding: 10pv;
+            line-height: 18px;
+            border-radius: 5px;
+            max-width: 250px;
+            color: #555;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+            clear: left;
+        }
+
+        #title {
+            position: absolute;
+            top: 30px;
+            left: 0;
+            right: 0;
+            margin: auto;
+            z-index: 1000;
+            width: 50%;
+            text-align: center;
+            color: white;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            font-family: Arial, Helvetica, sans-serif;
+            text-shadow: 2px 2px #000000;
+            font-weight: normal;
+            font-size: 1rem;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- <h1 id="title">New Zealand Coastal Landcover Change</h1> -->
+    <div id="map"></div>
+    <script type="text/javascript">
+        var mymap = L.map('map').setView([-41, 172], 5);
+        L.tileLayer('https://basemaps.linz.govt.nz/v1/tiles/aerial/WebMercatorQuad/{z}/{x}/{y}.webp?api=c01hevnqk6vravw5jx6tw7xw9zx', {
+            attribution: 'Map data &copy; <a href="">OpenStreetMap</a> contributors, ' +
+                '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+                'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            maxZoom: 18
+        }).addTo(mymap);
+
+        // define style for cells - colour scheme from chroma
+        var cmap = chroma.scale("RdYlGn").domain([-5, 5]);
+        function style(feature) {
+            return {
+                fillColor: cmap(feature.properties["IW shoreline trend"]),
+                weight: 1,
+                opacity: 1,
+                color: 'black',
+                fillOpacity: 0.7
+        }}
+
+        // get HR5 geojson and add to map
+        var cells = $.getJSON("shoreline_trends_by_cell.geojson", function (HR5geojson) {
+            console.log(HR5geojson)
+            L.geoJSON(HR5geojson, {
+                style:style,
+                onEachFeature:onEachFeature
+            }).addTo(mymap)
+
+        });
+
+        // define plots as popup
+        function onEachFeature(feature, layer) {
+            layer.on('click', function() {
+                var id = feature.properties.index // get cell trend data 
+                console.log(id)
+                layer.unbindPopup(); // Unbind any existing popup
+                
+                var popupContent = L.popup({
+                    minWidth: 400,
+                }).setContent(`
+                    <h3>${id}<h3>
+                    <div id="shPlot"></div>
+                    <div id="lcPlot"></div>
+                `);
+                layer.bindPopup(popupContent).openPopup();
+                // Calculate the center of the bounds
+                var center = layer.getBounds().getCenter();
+
+                // Offset the center to account for the popup's dimensions
+                var offset = mymap.getSize().y * 0.55; // Adjust this value as needed
+                var target = mymap.project(center).subtract([0, offset]);
+                mymap.panTo(mymap.unproject(target), {
+                    animate: true,
+                    duration: 1.0
+                });
+                makeShorelinePlot(id)
+                makeLandcoverPlot(id);
+            });
+        }
+
+        // define landcover plot
+        function makeLandcoverPlot(cellId, layer) {
+            var lc_url = `data/${cellId}/landcover_timeseries_percentage_change.csv`
+            Plotly.d3.csv(lc_url, function(data) {processData(data)});
+            function processData(allRows) {
+            console.log(allRows);
+            var x = [], sand = [], vegetation = [], water = [];
+            for (var i=0; i<allRows.length; i++) {
+                row = allRows[i]
+                x.push (row['date']);
+                sand.push (row['sand_area_percentage_change']);
+                vegetation.push (row['vegetation_area_percentage_change']);
+                water.push (row['water_area_percentage_change'])
+            }
+            console.log('x',x, 'sand',sand, 'vegetation',vegetation, 'water',water);
+            var data = [{
+                type: "scatter",
+                mode: "lines+markers",
+                name: "Sediment",
+                x: x,
+                y: sand,
+                line: {color: '#FFC300'}
+            }, {
+                type: "scatter",
+                mode: "lines+markers",
+                name: "Vegetation",
+                x: x,
+                y: vegetation,
+                line: {color: '#008000'},
+            }, {
+                type: "scatter",
+                mode: "lines+markers",
+                name: "Water",
+                x: x,
+                y: water,
+                line: {color: '#0000FF'},
+            }];
+            var layout = {
+                font: {
+                    family: 'Courier New, monospace',
+                    size: 12
+                },
+                title: `Landcover percentage change`,
+                autosize: true,
+                height: 350,
+                automargin: true,
+                xaxis: {
+                    title: "Date/Time"
+                },
+                yaxis: {
+                    title: "Change (%)",
+                    hoverformat: '.2f'
+                },
+            legend: {
+                "orientation": "h",
+                x: 0.5,
+                y: 1,
+                xanchor: 'center',
+                yanchor: 'bottom'
+
+            }};
+                Plotly.newPlot('lcPlot', data, layout)
+            };
+        };
+
+        function makeShorelinePlot(cellId) {
+            var sh_url = `data/${cellId}/shoreline_timeseries_tidal_correction.csv`
+            Plotly.d3.csv(sh_url, function(data) {processData(data)});
+            function processData(allRows) {
+            console.log(allRows);
+            var x = [], iw = [], eov = [];
+            for (var i=0; i<allRows.length; i++) {
+                row = allRows[i]
+                x.push (row['date']);
+                iw.push (row['cumulative_IW_shoreline_position']);
+                eov.push (row['cumulative_EOV_shoreline_position']);
+            }
+            console.log('x',x, 'iw',iw, 'eov',eov);
+            var data = [{
+                type: "scatter",
+                mode: "lines+markers",
+                name: "Instantaneous Waterline",
+                x: x,
+                y: iw,
+                line: {color: '#FFC300'}
+            }, {
+                type: "scatter",
+                mode: "lines+markers",
+                name: "Edge of Vegetation",
+                x: x,
+                y: eov,
+                line: {color: '#008000'},
+            }];
+            var layout = {
+                title:  `Estimated shoreline proxy change`,
+                font: {
+                    family: 'Courier New, monospace',
+                    size: 12
+                },
+                autosize: true,
+                height: 350,
+                automargin: true,
+
+                xaxis: {
+                    title: "Date/Time"
+                },
+                yaxis: {
+                    title: "Cross Shore Displacement (m)",
+                    hoverformat: '.2f'
+                },
+                legend: {
+                "orientation": "h",
+                x: 0.5,
+                y: 1,
+                xanchor: 'center',
+                yanchor: 'bottom'
+            }};
+                Plotly.newPlot('shPlot', data, layout)
+            };
+        };
+
+        // define legend 
+        var legend = L.control({position: 'bottomright'});
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'info legend');
+            div.innerHTML += "<h4>Trend (m/year)<h4>"
+            // gen prefix for legend
+            for (var i = -5; i <= 5; i++) {
+                var prefix = ""
+                if (i == -5) {
+                    prefix = "≤ " 
+                } else if (i == 5) {
+                    prefix = "≥ "
+                }
+                div.innerHTML += `<i style="background:${cmap(i).css()}"></i>${prefix + i}<br>`
+            }
+            // div.innerHTML += `<div id="attribution">This map shows coastal landcover change and estimated IW and EOV shoreline trends for each cells in New Zealand.<br>
+            //     </div>`
+            return div;
+        };
+
+        legend.addTo(mymap);
+
+        
+        
+    </script>
+</body>
+</html>
