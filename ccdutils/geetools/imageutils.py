@@ -251,10 +251,79 @@ def return_tide_level_for_image(img, API_KEY):
 
     return img
 
+def return_cloud_pxl_count(img):
+    """"
+    function to return number of cloudy pixels in sentinel-2 image. Image must contain cloud mask band where band name = 'cloud'
+    """
+    cloud_mask = img.select('clouds') # cloud band is called clouds
+    band =  img.bandNames().get(0) # define first band name from image
+    # updateMask to ensure only count of cloudy pixels are returned
+    mask_img = img.select([band]).updateMask(cloud_mask)
+    pxl_count = mask_img.reduceRegion(
+        reducer=ee.Reducer.count(),
+        geometry=img.geometry(),
+        maxPixels=1e10
+    )
+    return img.set('mask_pixel_count', ee.Number(pxl_count.get(band)))
 
-    
+def return_region_pxl_count(img):
+    """
+    function to return number of pixels in image, based on one band in image defined by band_name. 
+    """
+    # def calc_pxl_count(img):
+    band = img.bandNames().get(0) # define first band name from image
+    pxl_count = img.select([band]).reduceRegion(
+        reducer=ee.Reducer.count(),
+        geometry=img.geometry(),
+        maxPixels=1e10
+    )
+    return img.set('total_pixel_count', ee.Number(pxl_count.get(band)))
 
+def add_cell_level_cloud_cover_property(img):
+    """
+    function to return cell level cloud cover as image metadata property.
+    """
+    return img.set('region_cloudy_percent', ee.Number(img.get('mask_pixel_count')).divide(ee.Number(img.get('total_pixel_count'))))
 
+def add_roi_centroid_image_property(roi):
+    """
+    add image crs and image centroid lat long from roi 
+    """
+    def add_centroid(img):
+        band = img.bandNames().get(0) # get first band name from image
+        img_band = img.select([band]) # select first image band to get CRS
+        centroid = roi.geometry().centroid()
 
+        return img.set({"image_centroid_lon": ee.List(centroid.coordinates()).get(0),
+                        "image_centroid_lat": ee.List(centroid.coordinates()).get(1),
+                        "image_crs": ee.String(img_band.projection().crs())
+                        })
+    return(add_centroid)
 
+def return_image_acquisition_time(img):
+    """
+    return image accquisition date and time (UTC) as image properties in order to return the tide at time of image acquisition from NIWA tide api 
+    date format is string 'yyyy-mm-dd'
+    time expressed as total minutes
+    """
+    acquisition_datetime = ee.String(img.get('system:index')).split('_').get(0)
 
+    date_time = ee.String(acquisition_datetime).split('T') # split intro date and time 
+    # return date as yyyy-mm-dd
+    date = date_time.get(0) 
+    y = ee.String(date).slice(0,4)
+    m = ee.String(date).slice(-4, -2)
+    d = ee.String(date).slice(-2)
+
+    date_str = ee.String(y.cat('-').cat(m).cat('-').cat(d))
+
+    # return hours and minutes as minutes 
+    time = date_time.get(1)
+    min = ee.Number.parse(ee.String(time).slice(2,4))
+    hr = ee.Number.parse(ee.String(time).slice(0,2))
+    hr_min = hr.multiply(ee.Number(60)).add(min)
+
+    return img.set({
+        'date_string': date_str,
+        'interval_minutes': hr_min
+    })
