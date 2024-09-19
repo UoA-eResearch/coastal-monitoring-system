@@ -24,6 +24,7 @@ img_bands = {'S2': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7','B8', 'B8A', 'B11', 'B12'
         'LS7_sr': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'],
         'LS8': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7'],
         'LS8_sr': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
+        'LS9_sr': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
         'S1': ['HH', 'HV', 'VV', 'VH', 'angle']}
 
 # dict containing sensor GEE snippets for optical collections store SR and TOA collections as list
@@ -257,6 +258,50 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_cover=0.10, c
                 # add cloud_shdw_mask # use default buffer value (50m)
                 # mask clouds
                 .map(s2utils.mask_clouds))
+        return img_collection
+
+def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, cloud_cover=0.10):
+        """
+        function to return ls surface reflectance image collection defined by region where cloud cover is calculated for region.
+        Args
+        date - date as yyyy-mm-dd 
+        time_step - integer indicating number of weeks from date to filter the image collection
+        roi - ee.featureCollection object defining region 
+        landsat sensor id - string representing landsat sensor 
+        cloud_cover - float representing % cloud cover for region to be included in collection default=0.10
+        pxl_size - 
+        """
+        # define dates as str
+        start_date = (datetime.strptime(date, "%Y-%m-%d") - timedelta(weeks=time_step)).strftime("%Y-%m-%d")
+
+        print(f"Looking for images between {start_date} and {date}")
+
+        # define image collection
+        # # define sr image collection
+        img_collection = (ee.ImageCollection(sensor_id[landsat_sensor_id][0]) 
+                .filterBounds(roi) 
+                .filterDate(start_date, date))
+         
+        # join sentinel cloud probabilty image and add cloud band 
+        img_collection = (img_collection.map(lsutils.apply_scale_factors)
+                .map(lsutils.add_cloud_band))
+        
+        print(f"number of available images: {img_collection.size().getInfo()}")
+
+        # calc pxl counts for cloud mask and total region
+        img_collection = (img_collection.map(imageutils.return_region_pxl_count)
+                        .map(imageutils.return_cloud_pxl_count)
+                        .map(imageutils.add_cell_level_cloud_cover_property)
+                        .filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
+        
+        print(f"number of cloud-free images: {img_collection.size().getInfo()}")
+
+        # perform cloud masking
+        img_collection = (img_collection 
+                .map(lsutils.apply_scale_factors) # apply scale factors, mask clouds and rename bands
+                .map(lsutils.mask_clouds_LS_qa)
+                .map(imageutils.rename_img_bands(img_bands[f"{landsat_sensor_id}_sr"], )))
+        
         return img_collection
 
 def add_tide_level_to_collection(ee_image_collection, roi, multithreading=False):

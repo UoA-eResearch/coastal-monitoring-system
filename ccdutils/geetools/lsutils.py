@@ -29,6 +29,23 @@ def mask_clouds_LS_qa(image):
     
     return image.updateMask(mask)
 
+ 
+# function to add cloud_band to images in ee.ImageCollection
+def add_cloud_band(image):
+    # define bit_masks
+    shadow_bit_mask = (1 << 4)
+    cloud_bit_mask = (1 << 3)
+    dcloudBitMask = (1 << 1)
+    # get qa image band
+    qa = image.select('QA_PIXEL')
+
+    # define mask
+    cloud = qa.bitwiseAnd(shadow_bit_mask).eq(0) \
+        .And(qa.bitwiseAnd(cloud_bit_mask).eq(0)) \
+        .And(qa.bitwiseAnd(dcloudBitMask).eq(0)).rename('clouds')
+    
+    return image.addBands(ee.Image([cloud]))
+
 
 def apply_scale_factors(image):
     """
