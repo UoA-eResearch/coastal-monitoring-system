@@ -110,7 +110,7 @@ def download_images_in_collection(shp, down_dir):
         date=datetime.today().strftime('%Y-%m-%d'),
         time_step=52,
         roi=roi,
-        landsat_sensor_id=s
+        landsat_sensor_id=s,
         cloud_cover=0.00)
         s2_img_collection.merge(img_collection)
 

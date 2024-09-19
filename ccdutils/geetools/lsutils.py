@@ -42,8 +42,8 @@ def add_cloud_band(image):
     # define mask
     cloud = qa.bitwiseAnd(shadow_bit_mask).eq(0) \
         .And(qa.bitwiseAnd(cloud_bit_mask).eq(0)) \
-        .And(qa.bitwiseAnd(dcloudBitMask).eq(0)).rename('clouds')
-    
+        .And(qa.bitwiseAnd(dcloudBitMask).eq(0)).Not().rename('clouds')
+        
     return image.addBands(ee.Image([cloud]))
 
 
