@@ -98,12 +98,21 @@ def download_images_in_collection(shp, down_dir):
     ## return ee.FeatureCollection from shp
     roi = featureutils.shp_to_featureCollection(shp)
 
-    img_collection = imagecollectionutils.gen_s2_image_collection_for_region(
+    s2_img_collection = imagecollectionutils.gen_s2_image_collection_for_region(
         date=datetime.today().strftime('%Y-%m-%d'),
         time_step=52,
         roi=roi,
-        cloud_cover=0.004
+        cloud_cover=0.00
     )
+    ls_sensors = ['LS8', 'LS9']
+    for s in ls_sensors:
+        img_collection = imagecollectionutils.gen_ls_image_collection_for_region(
+        date=datetime.today().strftime('%Y-%m-%d'),
+        time_step=52,
+        roi=roi,
+        landsat_sensor_id=s
+        cloud_cover=0.00)
+        s2_img_collection.merge(img_collection)
 
     img_collection_tide = imagecollectionutils.add_tide_level_to_collection(img_collection, roi, multithreading=True)
     
@@ -128,7 +137,7 @@ def download_images_in_collection(shp, down_dir):
         
         iterator = list(range(0, img_collection.size().getInfo()))
 
-        thread_map(down_img_mt, iterator, repeat(img_list), repeat(img_dir_path), repeat(roi), repeat("EPSG:2193"), repeat(10), repeat(-99))
+        thread_map(down_img_mt, iterator, repeat(img_list), repeat(img_dir_path), repeat(roi), repeat("EPSG:2193"), repeat(20), repeat(-99))
         print("images downloaded.")
 
         # return metadata_dict as json file 
