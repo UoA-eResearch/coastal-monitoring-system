@@ -21,9 +21,9 @@ start_time = time.time()
 
 
 
-monitoringutils.download_images_in_collection("data/85bb58c7fffffff/valid_data_mask_cell.gpkg", "data/85bb58c7fffffff") # Download images
+monitoringutils.download_images_in_collection("data/regions/85bb58c7fffffff.gpkg", "data/85bb58c7fffffff") # Download images
 
-monitoringutils.run_change_detection("data/85bb58c7fffffff") # run change detection
+# monitoringutils.run_change_detection("data/85bb58c7fffffff") # run change detection
 
 
 
