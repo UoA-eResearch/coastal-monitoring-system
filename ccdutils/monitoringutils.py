@@ -98,27 +98,33 @@ def download_images_in_collection(shp, down_dir):
     ## return ee.FeatureCollection from shp
     roi = featureutils.shp_to_featureCollection(shp)
 
-    s2_img_collection = imagecollectionutils.gen_s2_image_collection_for_region(
+    s2 = imagecollectionutils.gen_s2_image_collection_for_region(
         date=datetime.today().strftime('%Y-%m-%d'),
         time_step=52,
-        roi=roi,
-        cloud_cover=0.00
-    )
-    ls_sensors = ['LS8', 'LS9']
-    for s in ls_sensors:
-        img_collection = imagecollectionutils.gen_ls_image_collection_for_region(
-        date=datetime.today().strftime('%Y-%m-%d'),
-        time_step=52,
-        roi=roi,
-        landsat_sensor_id=s,
-        cloud_cover=0.00)
-        s2_img_collection.merge(img_collection)
+        roi=roi)
 
-    img_collection_tide = imagecollectionutils.add_tide_level_to_collection(img_collection, roi, multithreading=True)
+    ls8 = imagecollectionutils.gen_ls_image_collection_for_region(
+        date=datetime.today().strftime('%Y-%m-%d'),
+        time_step=52,
+        roi=roi,
+        landsat_sensor_id='LS8')
     
+    ls9 = imagecollectionutils.gen_ls_image_collection_for_region(
+        date=datetime.today().strftime('%Y-%m-%d'),
+        time_step=52,
+        roi=roi,
+        landsat_sensor_id='LS9')
+    
+    img_collection = (s2.merge(ls8).merge(ls9) # merge collections and filter by cloud.
+        .filter(ee.Filter.lte('region_cloudy_percent', 0.001)))
+
+    print(img_collection.size().getInfo())
+
     if img_collection.size().getInfo() != 0:
         
         print(f"number of cloud-free images to download:  {img_collection.size().getInfo()}")
+
+        img_collection = imagecollectionutils.add_tide_level_to_collection(img_collection, roi, multithreading=False)
 
         # calculate ndvi and mndwi
         img_collection = (img_collection.map(ndutils.apply_ndvi)
@@ -130,7 +136,12 @@ def download_images_in_collection(shp, down_dir):
         def down_img_mt(img_id, img_collection_list, directory, roi, crs, scale, no_data_val):
             img = ee.Image(img_collection_list.get(img_id)).select(['ndvi', 'mndwi'])
             img = img.clip(roi).unmask(no_data_val) # clip img for export
-            fn = f"""{img.get("system:index").getInfo()}.tif"""
+            system_index = img.get("system:index").getInfo().split('_')[-3:]
+            if len(system_index[-1]) == 6:
+                system_index = f"S2_{system_index[1][:8]}"
+            else:
+                system_index = '_'.join([system_index[0],system_index[-1]]) 
+            fn = f"{system_index}.tif"
             image_path = f"{directory}/{fn}"
             imageutils.download_img_local(img.toFloat(), directory, fn, roi.geometry(), crs, scale)
             convert_image(image_path, no_data_val, 'KEA')
@@ -141,11 +152,11 @@ def download_images_in_collection(shp, down_dir):
         print("images downloaded.")
 
         # return metadata_dict as json file 
-        collection_metadata = return_image_metadata(img_collection_tide)
+        collection_metadata = return_image_metadata(img_collection)
         fn_meta = f"{down_dir}/image_metadata.json"
         try: # check to see if metadata file exsits
             with open(fn_meta, 'r') as existing_file:
-                 existing_data = json.load(existing_file)
+                existing_data = json.load(existing_file)
         except FileNotFoundError:
             existing_data = {}
         
@@ -177,7 +188,7 @@ def return_oldest_image(folder):
 
     #print(files)
 
-    date_strings = [f.split('_')[1][:8] for f in image_files] 
+    date_strings = [f.split('_')[-1] for f in image_files] 
     oldest_date = min(datetime.strptime(date, "%Y%m%d") for date in date_strings)
     fp = [f for f in image_files if oldest_date.strftime("%Y%m%d") in f][0]
     

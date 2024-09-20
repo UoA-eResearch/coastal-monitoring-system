@@ -227,13 +227,15 @@ def return_tide_level_for_image(img, API_KEY):
                   "interval": int(img.get('interval_minutes').getInfo())
     }
     
+    #print(parameters)
+
     # run in a while loop to in case rate limit exceeded on API
     total_retries = 3
     retries = 0
     while retries < total_retries:
         try:
             r = requests.get(URL, params=parameters, headers=headers) # get response from niwa tide API
-
+            print(r)
             if r.status_code == 429:
                 sleep_seconds = int(r.headers["Retry-After"])
                 # sleep for x seconds to refresh the count
@@ -306,22 +308,13 @@ def return_image_acquisition_time(img):
     date format is string 'yyyy-mm-dd'
     time expressed as total minutes
     """
-    acquisition_datetime = ee.String(img.get('system:index')).split('_').get(0)
+    timestamp = ee.Date(img.get('system:time_start'))
+    hour = timestamp.get('hour')
+    minute = timestamp.get('minute')
+    hr_min = ee.Number(hour).multiply(ee.Number(60)).add(ee.Number(minute))
+    
+    date_str = ee.String(ee.String(timestamp.format('yyyy-MM-dd')))
 
-    date_time = ee.String(acquisition_datetime).split('T') # split intro date and time 
-    # return date as yyyy-mm-dd
-    date = date_time.get(0) 
-    y = ee.String(date).slice(0,4)
-    m = ee.String(date).slice(-4, -2)
-    d = ee.String(date).slice(-2)
-
-    date_str = ee.String(y.cat('-').cat(m).cat('-').cat(d))
-
-    # return hours and minutes as minutes 
-    time = date_time.get(1)
-    min = ee.Number.parse(ee.String(time).slice(2,4))
-    hr = ee.Number.parse(ee.String(time).slice(0,2))
-    hr_min = hr.multiply(ee.Number(60)).add(min)
 
     return img.set({
         'date_string': date_str,

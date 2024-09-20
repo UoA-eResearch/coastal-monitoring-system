@@ -23,6 +23,7 @@ img_bands = {'S2': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7','B8', 'B8A', 'B11', 'B12'
         'LS7': ['B1', 'B2', 'B3', 'B4', 'B5', 'B7'],
         'LS7_sr': ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7'],
         'LS8': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7'],
+        'LS9': ['B2', 'B3', 'B4', 'B5', 'B6', 'B7'],
         'LS8_sr': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
         'LS9_sr': ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7'],
         'S1': ['HH', 'HV', 'VV', 'VH', 'angle']}
@@ -213,7 +214,7 @@ def return_least_cloudy_image(year, roi, sensor, cloud_cover=None, return_least_
 
         return ee.Image(collection.first())
 
-def gen_s2_image_collection_for_region(date, time_step, roi, cloud_cover=0.10, cloud_prob_score=60):
+def gen_s2_image_collection_for_region(date, time_step, roi, cloud_prob_score=60):
         """
         function to return s2 surface reflectance image collection defined by region where cloud cover is calculated for region.
         Args
@@ -241,13 +242,13 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_cover=0.10, c
                         .map(s2utils.add_cloud_bands_to_img_collection(cloud_prob_score)) # adds cloud band based on cloud_prob_score
                         .map(imageutils.clip_images_to_region(roi))) # clip to region/cell
         
-        print(f"number of available images: {img_collection.size().getInfo()}")
+        #print(f"number of available images: {img_collection.size().getInfo()}")
 
         # calc pxl counts for cloud mask and total region
-        img_collection = (img_collection.map(s2utils.return_region_pxl_count)
-                        .map(s2utils.return_cloud_pxl_count)
-                        .map(s2utils.add_cell_level_cloud_cover_property)
-                        .filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
+        img_collection = (img_collection.map(imageutils.return_region_pxl_count)
+                        .map(imageutils.return_cloud_pxl_count)
+                        .map(imageutils.add_cell_level_cloud_cover_property))
+                        ##.filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
         
         print(f"number of cloud-free images: {img_collection.size().getInfo()}")
 
@@ -260,7 +261,7 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_cover=0.10, c
                 .map(s2utils.mask_clouds))
         return img_collection
 
-def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, cloud_cover=0.10):
+def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, use_TOA=True):
         """
         function to return ls surface reflectance image collection defined by region where cloud cover is calculated for region.
         Args
@@ -276,31 +277,38 @@ def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, 
 
         print(f"Looking for images between {start_date} and {date}")
 
+        if use_TOA == True:
+               collection_id = sensor_id[landsat_sensor_id][1]
+               bands_id = f"{landsat_sensor_id}"
+
+        else:
+               collection_id = sensor_id[landsat_sensor_id][0]
+               bands_id = f"{landsat_sensor_id}_sr"
+
         # define image collection
-        # # define sr image collection
-        img_collection = (ee.ImageCollection(sensor_id[landsat_sensor_id][0]) 
+        img_collection = (ee.ImageCollection(collection_id) 
                 .filterBounds(roi) 
                 .filterDate(start_date, date))
          
-        # join sentinel cloud probabilty image and add cloud band 
-        img_collection = (img_collection.map(lsutils.apply_scale_factors)
-                .map(lsutils.add_cloud_band))
+        img_collection = (img_collection #.map(lsutils.apply_scale_factors)
+                .map(lsutils.add_cloud_band)
+                .map(imageutils.clip_images_to_region(roi))) # clip to region/cell)
         
         print(f"number of available images: {img_collection.size().getInfo()}")
 
         # calc pxl counts for cloud mask and total region
         img_collection = (img_collection.map(imageutils.return_region_pxl_count)
                         .map(imageutils.return_cloud_pxl_count)
-                        .map(imageutils.add_cell_level_cloud_cover_property)
-                        .filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
+                        .map(imageutils.add_cell_level_cloud_cover_property))
+                        #.filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
         
-        print(f"number of cloud-free images: {img_collection.size().getInfo()}")
+        #print(f"number of cloud-free images: {img_collection.size().getInfo()}")
 
         # perform cloud masking
         img_collection = (img_collection 
-                .map(lsutils.apply_scale_factors) # apply scale factors, mask clouds and rename bands
+                #.map(lsutils.apply_scale_factors) # apply scale factors, mask clouds and rename bands
                 .map(lsutils.mask_clouds_LS_qa)
-                .map(imageutils.rename_img_bands(img_bands[f"{landsat_sensor_id}_sr"], )))
+                .map(rename_img_bands(bands_id)))
         
         return img_collection
 
@@ -309,9 +317,9 @@ def add_tide_level_to_collection(ee_image_collection, roi, multithreading=False)
         function to return tide level relative to MSL for all images in image colletion using the Niwa tide API
         """
 
-        img_collection = (ee_image_collection.map(s2utils.add_roi_centroid_image_property(roi))
-                        .map(s2utils.return_image_acquisition_time))
-        
+        img_collection = (ee_image_collection.map(imageutils.add_roi_centroid_image_property(roi))
+                        .map(imageutils.return_image_acquisition_time))
+          
         # add tide level to image
         img_list = img_collection.toList(img_collection.size().getInfo()) # needs to be run as for loop due to mixing client/server operations
 
@@ -320,7 +328,7 @@ def add_tide_level_to_collection(ee_image_collection, roi, multithreading=False)
         if multithreading == True:
                def add_tide_level_to_collection_mt(img_id, list_of_images):
                         img = ee.Image(list_of_images.get(img_id))
-                        img = imageutils.return_tide_level_for_image(img)
+                        img = imageutils.return_tide_level_for_image(img, API_KEY=open('niwakey').readline())
                         return img
                iterable = list(range(0, img_collection.size().getInfo()))
                results = thread_map(add_tide_level_to_collection_mt, iterable, repeat(img_list))
@@ -328,7 +336,7 @@ def add_tide_level_to_collection(ee_image_collection, roi, multithreading=False)
         else:
                 for i in tqdm.tqdm(range(img_collection.size().getInfo())): # iterate over images in list to return tide level
                         img = ee.Image(img_list.get(i))
-                        img = imageutils.return_tide_level_for_image(img)
+                        img = imageutils.return_tide_level_for_image(img, API_KEY=open('niwakey').readline())
                         img_collection_tide_list = img_collection_tide_list.add(img) # add to ee.List to generate collection with tide level property 
 
         return ee.ImageCollection(img_collection_tide_list) # redefine image collection
