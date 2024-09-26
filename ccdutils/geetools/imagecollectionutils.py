@@ -247,10 +247,10 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_prob_score=60
         # calc pxl counts for cloud mask and total region
         img_collection = (img_collection.map(imageutils.return_region_pxl_count)
                         .map(imageutils.return_cloud_pxl_count)
-                        .map(imageutils.add_cell_level_cloud_cover_property))
-                        ##.filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
+                        .map(imageutils.add_cell_level_cloud_cover_property)
+                        .filter(ee.Filter.lte('region_cloudy_percent', 0.001))) # filter collection by region_cloudy_percent
         
-        print(f"number of cloud-free images: {img_collection.size().getInfo()}")
+        print(f"number of cloud-free available: {img_collection.size().getInfo()}")
 
         # perform cloud masking
         img_collection = (img_collection 
@@ -299,10 +299,10 @@ def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, 
         # calc pxl counts for cloud mask and total region
         img_collection = (img_collection.map(imageutils.return_region_pxl_count)
                         .map(imageutils.return_cloud_pxl_count)
-                        .map(imageutils.add_cell_level_cloud_cover_property))
-                        #.filterMetadata('region_cloudy_percent', 'less_than', cloud_cover)) # filter collection by region_cloudy_percent
+                        .map(imageutils.add_cell_level_cloud_cover_property)
+                        .filter(ee.Filter.lte('region_cloudy_percent', 0.001))) # filter collection by region_cloudy_percent
         
-        #print(f"number of cloud-free images: {img_collection.size().getInfo()}")
+        print(f"number of cloud-free images: {img_collection.size().getInfo()}")
 
         # perform cloud masking
         img_collection = (img_collection 
