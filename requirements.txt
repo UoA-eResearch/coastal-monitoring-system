@@ -12,3 +12,4 @@ geopandas
 rasterstats
 ipywidgets
 ipykernel
+jupyter

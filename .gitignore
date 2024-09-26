@@ -2,8 +2,14 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
-### niwa api key
+### keys
 niwakey
+.ee_service_account_key.json
+
+## ignore data except csv outputs
+data/*/*/*
+!data/*/*/*.csv
+
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

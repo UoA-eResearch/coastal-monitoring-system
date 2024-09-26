@@ -237,7 +237,7 @@ def return_tide_level_for_image(img, API_KEY):
             r = requests.get(URL, params=parameters, headers=headers) # get response from niwa tide API
             # print(r)
             if r.status_code == 429:
-                sleep_seconds = int(r.headers["Retry-After"])
+                sleep_seconds = int(20)
                 # sleep for x seconds to refresh the count
                 print(f'Num of API reqs exceeded, Sleeping for: {sleep_seconds} seconds...')
                 time.sleep(sleep_seconds)
