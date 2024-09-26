@@ -189,7 +189,7 @@ change_detection/.DS_Store
 *__pycache__*
 .gpkg*
 debug-area-chg.ipynb
-data/*
+# data/*
 
 global-inputs/h3_coast_HR_all_incl_islands.gpkg
 global-inputs/HR6-change-cells-incl-islands.gpkg
