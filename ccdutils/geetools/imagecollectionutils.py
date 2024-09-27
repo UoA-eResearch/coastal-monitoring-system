@@ -258,7 +258,10 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_prob_score=60
                 .map(s2utils.add_cloud_shadow_mask) 
                 # add cloud_shdw_mask # use default buffer value (50m)
                 # mask clouds
-                .map(s2utils.mask_clouds))
+                .map(s2utils.mask_clouds)
+                .map(imageutils.add_roi_centroid_image_property(roi))
+                .map(imageutils.return_image_acquisition_time))
+    
         return img_collection
 
 def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, use_TOA=True):
@@ -308,7 +311,9 @@ def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, 
         img_collection = (img_collection 
                 #.map(lsutils.apply_scale_factors) # apply scale factors, mask clouds and rename bands
                 .map(lsutils.mask_clouds_LS_qa)
-                .map(rename_img_bands(bands_id)))
+                .map(rename_img_bands(bands_id))
+                .map(imageutils.add_roi_centroid_image_property(roi))
+                .map(imageutils.return_image_acquisition_time))
         
         return img_collection
 

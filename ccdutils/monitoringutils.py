@@ -32,6 +32,7 @@ import glob
 from tqdm.contrib.concurrent import thread_map
 from tqdm.contrib.concurrent import process_map
 from itertools import repeat
+import requests
 
 def gen_aoi_mask(cls_img, folder):
     aoi_msk_img = f"{folder}/aoi_mask.kea"
@@ -110,7 +111,10 @@ def return_image_metadata(img_collection):
     # define metadata and img metadata
     metadata = {}
     img_list = []
-    timestamp_list = []
+    date_list = [] # date, time, lat, lon for tide level
+    time_list = []
+    lat_list = []
+    lon_list = []
     cloud_list = []
 
     # add number of images to dict
@@ -121,15 +125,72 @@ def return_image_metadata(img_collection):
     for i in img_collection.getInfo()['features']:
         # add to img_list
         img_list.append(i['id'])
-        timestamp_list.append(i['properties']['system:time_start'])
+        date_list.append(i['properties']['date_string'])
+        time_list.append(i['properties']['interval_minutes'])
+        lon_list.append(i['properties']['image_centroid_lon'])
+        lat_list.append(i['properties']['image_centroid_lat'])
         cloud_list.append(round(float(i['properties']['region_cloudy_percent']), 3))
 
     # add image ids to dict
     metadata['image_id'] = img_list
-    metadata['image_timestamp'] = timestamp_list
+    metadata['image_date'] = date_list
+    metadata['image_time'] = time_list
+    metadata['lon'] = lon_list
+    metadata['lat'] = lat_list
+    
     metadata['region_cloudy_percentage'] = cloud_list
 
     return metadata
+
+def return_tide_level_for_image(row):
+    """
+    function to return tide level for image using the niwa tide API and image metadata properties 
+    adding tide relative to msl to image metadata.
+    Args
+    img - ee.Image object - all parameters acquired from image metadata properties
+        - input_crs - from image_crs
+        - lat - from image_centroid_coordinates
+        - long - from image_centroid_coordinates
+        - startDate - from date_string
+        - interval - from interval_minutes
+    """
+    # define API params
+    URL = "https://api.niwa.co.nz/tides/data"
+    headers = {"x-apikey": open('niwakey').readline(),
+               "Accept": "application/json"}
+
+    # define parameters for tide api 
+    parameters = {"lat": row.lat,
+                  "long": row.lon,
+                  "numberOfDays": 1, # only need to return tide for date & interval provided.
+                  "startDate": row.image_date,
+                  "datum": "MSL", # set to return tide relative to mean sea level
+                  "interval": int(row.image_time)
+    }
+    
+    # run in a while loop to in case rate limit exceeded on API
+    total_retries = 3
+    retries = 0
+    while retries < total_retries:
+        try:
+            r = requests.get(URL, params=parameters, headers=headers) # get response from niwa tide API
+            # print(r)
+            if r.status_code == 429:
+                sleep_seconds = int(10)
+                # sleep for x seconds to refresh the count
+                print(f'Num of API reqs exceeded, Sleeping for: {sleep_seconds} seconds...')
+                time.sleep(sleep_seconds)
+                retries += 1
+            else:
+                tide_level = r.json()['values'][0]['value'] # return tide_level from response
+                row = row + (tide_level,)
+                break
+        except requests.exceptions.Timeout:
+            print("request timed out. Consider handling this case.")
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred: {e}")
+
+    return row
 
 def download_historical_imagery(gdf, down_dir):
     """
@@ -241,8 +302,14 @@ def download_historical_imagery(gdf, down_dir):
             for k, v in collection_metadata.items(): # add new image metadata if metadata file already exists
                 existing_data.setdefault(k, []).extend(v)
             
-            with open(fn_meta, "w") as file:
-                json.dump(existing_data, file)  # Write the combined data back to the file
+            meta_df = pd.DataFrame.from_dict(existing_data, orient='index').transpose() # read image_metadata as pandas df
+            meta_df = meta_df.drop_duplicates(subset='image_id') # drop duplicates based on image id
+            with_tide_df = thread_map(return_tide_level_for_image, meta_df.itertuples(index=False)) # add tide level
+            cols = list(meta_df.columns) + ['tide_level_msl']
+            meta_df = pd.DataFrame(with_tide_df, columns=cols) # return df with tide level and write to json
+            meta_dict = meta_df.to_dict(orient='list')
+            with open(fn_meta, 'w') as file:
+                file.write(json.dumps(meta_dict, indent=4))
     
         else: 
             print("Images contain too much cloud.")
@@ -390,7 +457,6 @@ def run_change_detection(folder):
         class_folder_path = f"{folder}/classification"
         if not os.path.exists(class_folder_path):
             os.makedirs(class_folder_path)
-            # clip classification by cell ROI and return to classification directory
 
         #chg_detection_output_path = f"{folder}/change_detection_outputs" # define change outputs directory path
 
