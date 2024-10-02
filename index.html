@@ -153,7 +153,7 @@
 
         // define landcover plot
         function makeLandcoverPlot(cellId, layer) {
-            var lc_url = `data/${cellId}/landcover_timeseries_percentage_change.csv`
+            var lc_url = `data/HR5/${cellId}/landcover_timeseries_percentage_change.csv`
             Plotly.d3.csv(lc_url, function(data) {processData(data)});
             function processData(allRows) {
             console.log(allRows);
@@ -217,7 +217,7 @@
         };
 
         function makeShorelinePlot(cellId) {
-            var sh_url = `data/${cellId}/shoreline_timeseries_tidal_correction.csv`
+            var sh_url = `data/HR5/${cellId}/shoreline_timeseries_tidal_correction.csv`
             Plotly.d3.csv(sh_url, function(data) {processData(data)});
             function processData(allRows) {
             console.log(allRows);
