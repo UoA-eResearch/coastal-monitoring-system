@@ -234,7 +234,8 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_prob_score=60
         # # define sr image collection
         img_collection = (ee.ImageCollection(sensor_id['S2'][0]) 
                 .filterBounds(roi) 
-                .filterDate(start_date, date))
+                .filterDate(start_date, date)
+                .filter(ee.Filter.contains('.geo', roi.geometry()))) # ensure that image is contained by roi rather than just intersecting
 
         # join sentinel cloud probabilty image and add cloud band 
         img_collection = (s2utils.join_S2_cld_prob(img_collection, roi, start_date, date)
@@ -291,7 +292,8 @@ def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, 
         # define image collection
         img_collection = (ee.ImageCollection(collection_id) 
                 .filterBounds(roi) 
-                .filterDate(start_date, date))
+                .filterDate(start_date, date)
+                .filter(ee.Filter.contains('.geo', roi.geometry()))) # ensure that image is contained by roi rather than just intersecting
          
         img_collection = (img_collection #.map(lsutils.apply_scale_factors)
                 .map(lsutils.add_cloud_band)

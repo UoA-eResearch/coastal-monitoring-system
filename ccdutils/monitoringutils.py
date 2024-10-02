@@ -18,6 +18,7 @@ from ccdutils.boundaryanalysis import tools
 from datetime import datetime
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 import ee
 import tqdm
 import json
@@ -83,6 +84,22 @@ def return_initial_cls_img(gdf, cell_directory):
 
     msk_img_by_gpd(geom, cls_img_path, classification_dir_path)
 
+def replace_inf_with_nodata(file_path, nodata_value):
+    # Open the input TIFF file
+    with rasterio.open(file_path, 'r+') as src:
+        # Loop through each band
+        for band in range(1, src.count + 1):
+            # Read the data for the current band
+            data = src.read(band)
+            
+            # Replace -inf values with the nodata value
+            data[np.isneginf(data)] = nodata_value
+            
+            # Write the modified data back to the same band
+            src.write(data, band)
+        
+        # Update the metadata to include the new nodata value
+        src.nodata = nodata_value
 
 def convert_image(image, nodataVal, outFormat='KEA'):
     """
@@ -94,8 +111,7 @@ def convert_image(image, nodataVal, outFormat='KEA'):
     outFormat - output format default = 'KEA'
     
     """
-    #for f in tqdm.tqdm(glob.glob(folder + f'/*.{inFormat}')):
-        #print(f)
+    replace_inf_with_nodata(image, nodataVal) # replace any -inf to nodata value
     out_img_path = f"{image[:-4]}.{outFormat.lower()}"
     # get band names
     bandNames = rsgislib.imageutils.get_band_names(image)
@@ -103,7 +119,7 @@ def convert_image(image, nodataVal, outFormat='KEA'):
     print(gdal_translate)
     os.system(gdal_translate)
     rsgislib.imageutils.set_band_names(out_img_path, bandNames)
-    rsgislib.imageutils.pop_img_stats(out_img_path, True,-99,True)
+    rsgislib.imageutils.pop_img_stats(out_img_path, True,nodataVal,True)
     os.remove(image) # remove .
 
 
@@ -141,6 +157,25 @@ def return_image_metadata(img_collection):
     metadata['region_cloudy_percentage'] = cloud_list
 
     return metadata
+
+def check_for_duplicate_images(image_directory):
+    """
+    function to remove images acquired on same date 
+    """
+    img_list = glob.glob(f"{image_directory}/*.kea")
+    date_list = [i.split('_')[-1][:-4] for i in img_list]
+    dup_list = []
+    for i in date_list:
+        n = date_list.count(i)
+        if n > 1:
+            if dup_list.count(i) == 0:
+                dup_list.append(i)
+    for d in dup_list:
+        del_list = []
+        for i in img_list:
+            if d in i and not "S2" in i:
+                print(f"Two images acquired on same day: deleting {i}")
+                os.remove(i)
 
 def return_tide_level_for_image(row):
     """
@@ -289,7 +324,6 @@ def download_historical_imagery(gdf, down_dir):
     
             thread_map(down_img_mt, iterator, repeat(img_list), repeat(img_dir_path), repeat(roi), repeat("EPSG:2193"), repeat(20), repeat(-99))
             print("images downloaded.")
-    
             # return metadata_dict as json file 
             collection_metadata = return_image_metadata(img_collection)
             fn_meta = f"{cell_dir_path}/image_metadata.json"
@@ -303,8 +337,13 @@ def download_historical_imagery(gdf, down_dir):
                 existing_data.setdefault(k, []).extend(v)
             
             meta_df = pd.DataFrame.from_dict(existing_data, orient='index').transpose() # read image_metadata as pandas df
-            meta_df = meta_df.drop_duplicates(subset='image_id') # drop duplicates based on image id
-            with_tide_df = thread_map(return_tide_level_for_image, meta_df.itertuples(index=False)) # add tide level
+            # drop duplicates based on date
+            meta_df.drop_duplicates(subset=['image_id', 'image_date'], keep='first', inplace=True) 
+            # dup_df = dup_df[dup_df.image_id.str.contains('S2')] # where there are duplicates kee
+            # meta_df.drop_duplicates(subset=['image_date'], inplace=True, keep=False)
+            # meta_df = pd.concat([meta_df, dup_df]).sort_values(by='image_date').reset_index(drop=True) 
+            # add tide level
+            with_tide_df = thread_map(return_tide_level_for_image, meta_df.itertuples(index=False)) 
             cols = list(meta_df.columns) + ['tide_level_msl']
             meta_df = pd.DataFrame(with_tide_df, columns=cols) # return df with tide level and write to json
             meta_dict = meta_df.to_dict(orient='list')
@@ -313,7 +352,8 @@ def download_historical_imagery(gdf, down_dir):
     
         else: 
             print("Images contain too much cloud.")
-
+    print("checking for duplicate images.")        
+    check_for_duplicate_images(img_dir_path) # remove one of any images acquired on same day.
 
 
 
@@ -431,11 +471,21 @@ def return_oldest_image(folder):
 
     #print(files)
 
-    date_strings = [f.split('_')[-1] for f in image_files] 
+    date_strings = [f.split('_')[-1][:-4] for f in image_files] 
     oldest_date = min(datetime.strptime(date, "%Y%m%d") for date in date_strings)
     fp = [f for f in image_files if oldest_date.strftime("%Y%m%d") in f][0]
     
     return fp
+
+def check_input_image(image, aoi_mask):
+    array = rsgislib.imageutils.extract_img_pxl_vals_in_msk(image, [1], aoi_mask, 1)
+    if -99 in array:
+        print(f"{image} missing valid data, removing image.")
+        os.remove(image)
+        return False
+    else:
+        print(f"{image} valid.")
+        return True
 
 def run_change_detection(folder):
     """Wrapper function to apply change detection to directory containing inputs for a H3 cell
@@ -451,7 +501,11 @@ def run_change_detection(folder):
         input_image = return_oldest_image(in_image_folder) # return oldest image in folder
         if input_image is None: 
             return
-        
+        # check that input_image contains valid data across whole AOI
+        aoi = f"{folder}/aoi_mask.kea"
+        while not check_input_image(input_image, aoi):
+            input_image = return_oldest_image(in_image_folder)
+            # 
         ## CHANGE DETECTION ##
         # define class_img folder 
         class_folder_path = f"{folder}/classification"
@@ -498,6 +552,7 @@ def run_change_detection(folder):
         img_date = input_image.split('_')[1][:8] # get image date
 
         out_dict = {} # dict to store variables
+        out_dict['sensor'] = input_image.split('_')[0]
         out_dict['date'] = img_date
 
         # calc IW shoreline chg
@@ -514,33 +569,41 @@ def run_change_detection(folder):
         out_dict['IW_area_change (Ha)'], out_dict['EOV_area_change (Ha)'] = tools.calc_area_change(chg_pixels_img)
         out_dict['sand_area (Ha)'], out_dict['water_area (Ha)'], out_dict['vegetation_area (Ha)'] = tools.return_new_class_area(output_classification)                                                                               
 
-        # save results to .csv
-        print(out_dict)
-        new_results = pd.DataFrame.from_dict([out_dict])
-        new_results['date'] = pd.to_datetime(new_results['date'])
-        csv_fn = f"{folder}/cell_timeseries.csv"
+        # Check that water and sand were classified correctly
+        if out_dict['sand_area (Ha)'] > out_dict['water_area (Ha)']: # if sand area is greater than water skip this iteration
+            print(f"error with classification date: {output_classification}")
+            print("removing classification on this iteration")
+            os.remove(output_classification)
 
-        if not os.path.exists(csv_fn):
-            new_results.to_csv(csv_fn)
-        else: 
-            df = pd.read_csv(csv_fn)
-            df = pd.concat([df, new_results], ignore_index=True)
-            df['date'] = pd.to_datetime(df['date'])
-            df.sort_values("date", inplace=True)
-            #df.reset_index(drop=True, inplace=True)  # Reset the index to avoid extra index column
-            df = df.round(2)
-            df = df.drop_duplicates(subset='date', keep='last')  # Remove duplicates based on the 'date' column
-            df.to_csv(csv_fn, index=False, sep=',')
-        print(f"Change detection and boundary analysis for image acquired on: {img_date} complete.")
-        print(f"Change analysis saved to {csv_fn}")
-            
-        # move current classification to archive folder
-        class_archive_dir = f"{class_folder_path}/archive"
-        if not os.path.exists(class_archive_dir):
-            os.makedirs(class_archive_dir)
-        class_img_filename = current_classifcation_image.split('/')[-1] 
-        print(f"archiving classification from last iteration: {class_archive_dir}/{class_img_filename}")
-        shutil.move(current_classifcation_image, f"{class_archive_dir}/{class_img_filename}")
+        else:
+            # save results to .csv
+            print(out_dict)
+            new_results = pd.DataFrame.from_dict([out_dict])
+            new_results['date'] = pd.to_datetime(new_results['date'])
+            csv_fn = f"{folder}/cell_timeseries.csv"
+    
+            if not os.path.exists(csv_fn):
+                new_results.to_csv(csv_fn)
+            else: 
+                df = pd.read_csv(csv_fn)
+                df = pd.concat([df, new_results], ignore_index=True)
+                df['date'] = pd.to_datetime(df['date'])
+                df.drop_duplicates(subset='date', inplace=True)
+                df.sort_values("date", inplace=True)
+                #df.reset_index(drop=True, inplace=True)  # Reset the index to avoid extra index column
+                df = df.round(2)
+                df = df.drop_duplicates(subset='date', keep='last')  # Remove duplicates based on the 'date' column
+                df.to_csv(csv_fn, index=False, sep=',')
+            print(f"Change detection and boundary analysis for image acquired on: {img_date} complete.")
+            print(f"Change analysis saved to {csv_fn}")
+                
+            # move current classification to archive folder
+            class_archive_dir = f"{class_folder_path}/archive"
+            if not os.path.exists(class_archive_dir):
+                os.makedirs(class_archive_dir)
+            class_img_filename = current_classifcation_image.split('/')[-1] 
+            print(f"archiving classification from last iteration: {class_archive_dir}/{class_img_filename}")
+            shutil.move(current_classifcation_image, f"{class_archive_dir}/{class_img_filename}")
 
        
         shutil.rmtree(tmp_dir_path)  # remove tmp directory 
