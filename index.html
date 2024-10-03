@@ -130,7 +130,7 @@
                 layer.unbindPopup(); // Unbind any existing popup
                 
                 var popupContent = L.popup({
-                    minWidth: 800,
+                    minWidth: 1200,
                 }).setContent(`
                     <h3>${id}<h3>
                     <div id="shPlot"></div>
@@ -269,12 +269,12 @@
             }];
             var layout = {
                 title:  `Estimated shoreline proxy change`,
-                font: {
-                    family: 'Courier New, monospace',
-                    size: 12
-                },
+                //font: {
+                //    family: 'Courier New, monospace',
+                //    size: 18
+                //},
                 autosize: true,
-                height: 350,
+                //height: 350,
                 automargin: true,
 
                 xaxis: {
