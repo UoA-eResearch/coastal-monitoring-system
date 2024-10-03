@@ -125,11 +125,12 @@
         function onEachFeature(feature, layer) {
             layer.on('click', function() {
                 var id = feature.properties.index // get cell trend data 
+                var p = feature.properties // get properties to get trend line
                 console.log(id)
                 layer.unbindPopup(); // Unbind any existing popup
                 
                 var popupContent = L.popup({
-                    minWidth: 400,
+                    minWidth: 800,
                 }).setContent(`
                     <h3>${id}<h3>
                     <div id="shPlot"></div>
@@ -140,13 +141,13 @@
                 var center = layer.getBounds().getCenter();
 
                 // Offset the center to account for the popup's dimensions
-                var offset = mymap.getSize().y * 0.55; // Adjust this value as needed
+                var offset = mymap.getSize().y * 0.5; // Adjust this value as needed
                 var target = mymap.project(center).subtract([0, offset]);
                 mymap.panTo(mymap.unproject(target), {
                     animate: true,
                     duration: 1.0
                 });
-                makeShorelinePlot(id)
+                makeShorelinePlot(id, p)
                 makeLandcoverPlot(id);
             });
         }
@@ -216,7 +217,7 @@
             };
         };
 
-        function makeShorelinePlot(cellId) {
+        function makeShorelinePlot(cellId, properties) {
             var sh_url = `data/HR5/${cellId}/shoreline_timeseries_tidal_correction.csv`
             Plotly.d3.csv(sh_url, function(data) {processData(data)});
             function processData(allRows) {
@@ -225,9 +226,15 @@
             for (var i=0; i<allRows.length; i++) {
                 row = allRows[i]
                 x.push (row['date']);
-                iw.push (row['cumulative_IW_shoreline_position']);
-                eov.push (row['cumulative_EOV_shoreline_position']);
+                iw.push (row['corrected_IW_shoreline_position']);
+                eov.push (row['EOV_shoreline_chg']);
             }
+            var iw_mean = Plotly.d3.mean(iw)
+            var eov_mean = Plotly.d3.mean(eov)
+            // get min/max date
+            var min_date = new Date(x[0])
+            var max_date = new Date(x[x.length - 1])
+            var datediff = (max_date - min_date) / 1000 / 60 / 60 / 24 / 365.25
             console.log('x',x, 'iw',iw, 'eov',eov);
             var data = [{
                 type: "scatter",
@@ -238,11 +245,27 @@
                 line: {color: '#FFC300'}
             }, {
                 type: "scatter",
+                mode: "lines",
+                name: "Instantaneous Waterline trendline",
+                x: [min_date, max_date],
+                y: [properties["IW shoreline intercept"], properties["IW shoreline trend"] * datediff + properties["IW shoreline intercept"] - iw_mean],
+                line: {color: '#FFC300'},
+                opacity: 0.5
+            }, {
+                type: "scatter",
                 mode: "lines+markers",
                 name: "Edge of Vegetation",
                 x: x,
                 y: eov,
                 line: {color: '#008000'},
+            }, {
+                type: "scatter",
+                mode: "lines",
+                name: "Edge of Vegetation trendline",
+                x: [min_date, max_date],
+                y: [properties["EOV shoreline intercept"], properties["EOV shoreline trend"] * datediff + properties["EOV shoreline intercept"] - eov_mean],
+                line: {color: '#008000', },
+                opacity: 0.5
             }];
             var layout = {
                 title:  `Estimated shoreline proxy change`,
