@@ -131,6 +131,7 @@
                 
                 var popupContent = L.popup({
                     minWidth: 1200,
+                    minHeight: 1000,
                 }).setContent(`
                     <h3>${id}<h3>
                     <div id="shPlot"></div>
@@ -196,7 +197,7 @@
                 },
                 title: `Landcover percentage change`,
                 autosize: true,
-                height: 350,
+                //height: 350,
                 automargin: true,
                 xaxis: {
                     title: "Date/Time"
