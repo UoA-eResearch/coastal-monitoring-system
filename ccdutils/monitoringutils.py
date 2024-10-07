@@ -514,8 +514,8 @@ def run_change_detection(folder):
 
         #chg_detection_output_path = f"{folder}/change_detection_outputs" # define change outputs directory path
 
-        current_classifcation_image = glob.glob(f"{class_folder_path}/*.kea")[0] # get current class image from classification directory
-        
+        # current_classifcation_image = glob.glob(f"{class_folder_path}/*.kea")[0] # get current class image from classification directory
+        current_classifcation_image = f"{class_folder_path}/2019.kea"
         # define change detection args
         parameters = {
             "input_img": input_image,
@@ -542,9 +542,6 @@ def run_change_detection(folder):
         print(f"new classification date: {output_classification}")
 
         ## BOUNDARY ANALYSIS ##
-        # boundary_analysis_folder_path = f"{folder}/boundary_analysis_outputs" # define class_img folder 
-        # if not os.path.exists(boundary_analysis_folder_path):
-        #     os.makedirs(boundary_analysis_folder_path)
         # define inputs 
         ndvi_chg = f"{tmp_dir_path}/ndvi-chg.kea"
         ndwi_chg = f"{tmp_dir_path}/ndwi-chg.kea"
@@ -598,12 +595,12 @@ def run_change_detection(folder):
             print(f"Change analysis saved to {csv_fn}")
                 
             # move current classification to archive folder
-            class_archive_dir = f"{class_folder_path}/archive"
-            if not os.path.exists(class_archive_dir):
-                os.makedirs(class_archive_dir)
-            class_img_filename = current_classifcation_image.split('/')[-1] 
-            print(f"archiving classification from last iteration: {class_archive_dir}/{class_img_filename}")
-            shutil.move(current_classifcation_image, f"{class_archive_dir}/{class_img_filename}")
+            # class_archive_dir = f"{class_folder_path}/archive"
+            # if not os.path.exists(class_archive_dir):
+            #     os.makedirs(class_archive_dir)
+            # class_img_filename = current_classifcation_image.split('/')[-1] 
+            # print(f"archiving classification from last iteration: {class_archive_dir}/{class_img_filename}")
+            # shutil.move(current_classifcation_image, f"{class_archive_dir}/{class_img_filename}")
 
        
         shutil.rmtree(tmp_dir_path)  # remove tmp directory 

@@ -227,8 +227,8 @@
             for (var i=0; i<allRows.length; i++) {
                 row = allRows[i]
                 x.push (row['date']);
-                iw.push (row['corrected_IW_shoreline_position']);
-                eov.push (row['EOV_shoreline_chg']);
+                iw.push (row['normalised_IW_shoreline_position']);
+                eov.push (row['normalised_EOV_shoreline_position']);
             }
             var iw_mean = Plotly.d3.mean(iw)
             var eov_mean = Plotly.d3.mean(eov)
