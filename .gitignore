@@ -3,7 +3,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
 ### keys
-niwakey
+.niwakey
 .ee_service_account_key.json
 
 ## ignore data except csv outputs
