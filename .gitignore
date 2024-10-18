@@ -199,10 +199,6 @@ change_detection/.DS_Store
 debug-area-chg.ipynb
 # data/*
 
-global-inputs/h3_coast_HR_all_incl_islands.gpkg
-global-inputs/HR6-change-cells-incl-islands.gpkg
 global-inputs/.DS_Store
 global-inputs/.DS_Store
-global-inputs/h3_coast_HR_all_incl_islands.gpkg
-global-inputs/HR6-change-cells-incl-islands.gpkg
 scratch_testing.ipynb
