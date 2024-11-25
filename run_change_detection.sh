@@ -4,6 +4,6 @@ conda activate coastal-monitoring
 git pull
 ./update_change_detection.py
 jupyter nbconvert --to notebook --execute --inplace apply_tidal_correction.ipynb calc_linear_trends.ipynb 
-git commit -am 'auto update' --author="coastal-monitor <vdiuser@vdi-cz9gxv>"
+git commit -am 'auto update' --author="coastal-monitor <ubuntu@monitoring>"
 git push
 conda deactivate
