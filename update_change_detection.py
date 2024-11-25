@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
+import ee
 
 service_account = 'monitoring-bot@coastal-monitoring-system.iam.gserviceaccount.com' # init gee with project 
 credentials = ee.ServiceAccountCredentials(service_account, '.ee_service_account_key.json')
 ee.Initialize(credentials)
 
 import ccdutils.monitoringutils as monitoringutils
-import ee
 from datetime import datetime
 import time
 import glob
