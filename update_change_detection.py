@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+service_account = 'monitoring-bot@coastal-monitoring-system.iam.gserviceaccount.com' # init gee with project 
+credentials = ee.ServiceAccountCredentials(service_account, '.ee_service_account_key.json')
+ee.Initialize(credentials)
+
 import ccdutils.monitoringutils as monitoringutils
 import ee
 from datetime import datetime
@@ -16,10 +20,6 @@ from osgeo import gdal
 # ... and suppress errors
 gdal.SetConfigOption('CPL_LOG', '/dev/null')
 os.environ["TQDM_DISABLE"] = "True"
-
-service_account = 'monitoring-bot@coastal-monitoring-system.iam.gserviceaccount.com' # init gee with project 
-credentials = ee.ServiceAccountCredentials(service_account, '.ee_service_account_key.json')
-ee.Initialize(credentials)
 
 start_time = time.time() # Start time tracking
 
