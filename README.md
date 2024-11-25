@@ -1,9 +1,8 @@
 # coastal-change-detection
 
 ## Installation 
-Packages and dependencies handled by conda and mamba. Recommended that mamba is installed instead of conda but this worked with conda installed.
+Packages and dependencies handled by Miniforge. Check [here](https://github.com/conda-forge/miniforge) for help installing Miniforge.
+To install dependencies for this repository create a new environment with the following command:
 
-`conda install mamba -n base -c conda-forge`
-
-`mamba env create --file nzcc.yml`
+`conda create --name coastal-monitoring --file requirements.txt`
 
