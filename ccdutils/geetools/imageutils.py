@@ -11,11 +11,6 @@ import rsgislib.imageutils
 from pyproj import Transformer
 import json
 
-
-# Initialize GEE
-ee.Initialize()
-
-
 def rename_img_bands(img_bands, band_names):
     """function to rename optical image bands for ee.Image in ee.ImageCollection when using .map function
     
