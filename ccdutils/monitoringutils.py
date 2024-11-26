@@ -191,7 +191,7 @@ def return_tide_level_for_image(row):
     """
     # define API params
     URL = "https://api.niwa.co.nz/tides/data"
-    headers = {"x-apikey": open('niwakey').readline(),
+    headers = {"x-apikey": open('.niwakey').readline(),
                "Accept": "application/json"}
 
     # define parameters for tide api 
