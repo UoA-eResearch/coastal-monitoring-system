@@ -1,8 +1,6 @@
 # import modules
 import ee
 
-# Initialize GEE
-#ee.Initialize()
 
 def apply_ndvi(image):
     """function to calculate ndvi for ee.image object and add band to object

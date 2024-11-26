@@ -2,9 +2,6 @@
 import ee
 
 
-# authenticate ee
-ee.Initialize()
-
 def mask_clouds_LS_qa(image):
     """
     function to mask Landsat ee.image object using QA_pixel band from Fmask
