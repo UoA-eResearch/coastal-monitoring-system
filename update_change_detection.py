@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import ee
 
 service_account = 'monitoring-bot@coastal-monitoring-system.iam.gserviceaccount.com' # init gee with project 
@@ -12,7 +13,7 @@ import glob
 import os
 import geopandas as gpd 
 import pandas as pd
-import os
+
 
 
 # surpress TIFF warnings from gdal
