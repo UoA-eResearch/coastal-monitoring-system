@@ -423,7 +423,7 @@ def download_images_in_collection(gdf, down_dir, interval=4):
             thread_map(down_img_mt, iterator, repeat(img_list), repeat(img_dir_path), repeat(roi), repeat("EPSG:2193"), repeat(20), repeat(-99))
             print("images downloaded.")
     
-            # return metadata_dict as json file 
+            ### RETURN METADATA ### 
             collection_metadata = return_image_metadata(img_collection)
             fn_meta = f"{cell_dir_path}/image_metadata.json"
             try: # check to see if metadata file exists
@@ -435,13 +435,22 @@ def download_images_in_collection(gdf, down_dir, interval=4):
             for k, v in collection_metadata.items(): # add new image metadata if metadata file already exists
                 existing_data.setdefault(k, []).extend(v)
             
+            # Handle duplicate images
             meta_df = pd.DataFrame.from_dict(existing_data, orient='index').transpose() # read image_metadata as pandas df
-            # drop duplicates based on date
-            meta_df.drop_duplicates(subset=['image_date'], keep='first', inplace=True)
-            with_tide_df = thread_map(return_tide_level_for_image, meta_df.itertuples(index=False)) # add tide level
-            cols = list(meta_df.columns) + ['tide_level_msl']
-            meta_df = pd.DataFrame(with_tide_df, columns=cols) # return df with tide level and write to json
-            meta_dict = meta_df.to_dict(orient='list')
+            meta_df.drop_duplicates(subset=['image_date'], keep='first', inplace=True) # drop duplicates based on date
+
+            ### Return tide level for new images ###
+            if 'tide_level_msl' in meta_df.columns: # check to see if tide level column exists.
+                images_without_tide =  meta_df[meta_df['tide_level_msl'].isnan()] # dataframe containing images that need tide level
+                with_tide_df = thread_map(return_tide_level_for_image, images_without_tide.itertuples(index=False)) # add tide level
+                meta_df = pd.concat([df.dropna(['tide_level_msl'])], with_tide_df) # concat existing metadata and new images with tide
+            else: # if column doesn't exist return tide for all images
+                with_tide_df = thread_map(return_tide_level_for_image, meta_df.itertuples(index=False)) # add tide level
+                cols = list(meta_df.columns) + ['tide_level_msl'] # define columns incl tide
+                meta_df = pd.DataFrame(with_tide_df, columns=cols) # return df with tide level and write to json
+            
+            # write metadata to file
+            meta_dict = meta_df.to_dict(orient='list') 
             with open(fn_meta, 'w') as file:
                 file.write(json.dumps(meta_dict, indent=4))
     
