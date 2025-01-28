@@ -111,10 +111,10 @@
                 fillOpacity: 0.7
         }}
 
-        // get HR5 geojson and add to map
-        var cells = $.getJSON("shoreline_trends_by_cell.geojson", function (HR5geojson) {
-            console.log(HR5geojson)
-            L.geoJSON(HR5geojson, {
+        // get geojson and add to map
+        var cells = $.getJSON("shoreline_trends_by_cell.geojson", function (geojson) {
+            console.log(geojson)
+            L.geoJSON(geojson, {
                 style:style,
                 onEachFeature:onEachFeature
             }).addTo(mymap)
@@ -170,21 +170,21 @@
             console.log('x',x, 'sand',sand, 'vegetation',vegetation, 'water',water);
             var data = [{
                 type: "scatter",
-                mode: "lines+markers",
+                mode: "markers",
                 name: "Sediment",
                 x: x,
                 y: sand,
                 line: {color: '#FFC300'}
             }, {
                 type: "scatter",
-                mode: "lines+markers",
+                mode: "markers",
                 name: "Vegetation",
                 x: x,
                 y: vegetation,
                 line: {color: '#008000'},
             }, {
                 type: "scatter",
-                mode: "lines+markers",
+                mode: "markers",
                 name: "Water",
                 x: x,
                 y: water,
@@ -219,7 +219,7 @@
         };
 
         function makeShorelinePlot(cellId, properties) {
-            var sh_url = `data/HR5/${cellId}/shoreline_timeseries_tidal_correction.csv`
+            var sh_url = `data/HR6/${cellId}/shoreline_timeseries_tidal_correction.csv`
             Plotly.d3.csv(sh_url, function(data) {processData(data)});
             function processData(allRows) {
             console.log(allRows);
@@ -239,7 +239,7 @@
             console.log('x',x, 'iw',iw, 'eov',eov);
             var data = [{
                 type: "scatter",
-                mode: "lines+markers",
+                mode: "markers",
                 name: "Instantaneous Waterline",
                 x: x,
                 y: iw,
@@ -254,7 +254,7 @@
                 opacity: 0.5
             }, {
                 type: "scatter",
-                mode: "lines+markers",
+                mode: "markers",
                 name: "Edge of Vegetation",
                 x: x,
                 y: eov,
