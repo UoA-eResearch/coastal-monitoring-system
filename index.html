@@ -155,7 +155,7 @@
 
         // define landcover plot
         function makeLandcoverPlot(cellId, layer) {
-            var lc_url = `data/HR5/${cellId}/landcover_timeseries_percentage_change.csv`
+            var lc_url = `data/HR6/${cellId}/landcover_timeseries_percentage_change.csv`
             Plotly.d3.csv(lc_url, function(data) {processData(data)});
             function processData(allRows) {
             console.log(allRows);
