@@ -51,7 +51,8 @@ def return_stats(input_img, img_band, cls_img, cls_val, below_thres=True):
         stats.loc['threshold'] = otsu
         stats.loc['outliers'] = est_outliers
         stats.loc['outliers-percent'] = est_outliers/array.size*100
-        return stats    
+        array = None
+        return stats  
     
     else:
         pass
@@ -163,6 +164,7 @@ def find_class_otsu_outliers(
                 msk_arr_vals[..., 0], plot_thres_file, chng_thres
             )
         
+        msk_arr_vals = None
         return chng_thres
     
     else:

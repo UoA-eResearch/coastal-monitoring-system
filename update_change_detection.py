@@ -21,25 +21,22 @@ os.environ["TQDM_DISABLE"] = "True"
 
 start_time = time.time() # Start time tracking
 
-hr5_folder = "data/HR5" # define top-level folder 
+folder = "data/HR6" # define top-level folder 
 try:
-    os.mkdir(hr5_folder) 
+    os.mkdir(folder) 
 except:
-    os.path.exists(hr5_folder) == True
+    os.path.exists(folder) == True
 
-hr5_cells = gpd.read_file('global-inputs/HR5-cells-beach-slope.gpkg') # return gdf of monitored sites
-sites = pd.read_csv('global-inputs/sites.csv') # return sites as list
-sites_list = sites.cell_id.tolist()
-monitored_sites = hr5_cells[hr5_cells['cell_id'].isin(sites_list)]
+cells = gpd.read_file('global-inputs/HR6-cells-beach-slope.gpkg') # return gdf of monitored sites
 
-gdf_cell_list = [gpd.GeoDataFrame([row]) for idx, row in monitored_sites.iterrows()] # Create a list of GeoSeries
+gdf_cell_list = [gpd.GeoDataFrame([row]) for idx, row in cells.iterrows()] # Create a list of GeoSeries
 
 ### Download images ###
 for cell in gdf_cell_list:
-    monitoringutils.download_images_in_collection(cell, hr5_folder)
+    monitoringutils.download_images_in_collection(cell, folder)
 
 ### perform change detection ###
-cell_directories = glob.glob(f"{hr5_folder}/*") # iterate over cell directories
+cell_directories = glob.glob(f"{folder}/*") # iterate over cell directories
 for cell_dir in cell_directories:
     monitoringutils.run_change_detection(cell_dir)
 

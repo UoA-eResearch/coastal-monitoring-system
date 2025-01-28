@@ -228,7 +228,7 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_prob_score=60
         # define dates as str
         start_date = (datetime.strptime(date, "%Y-%m-%d") - timedelta(weeks=time_step)).strftime("%Y-%m-%d")
 
-        print(f"Looking for images between {start_date} and {date}")
+        #print(f"Looking for images between {start_date} and {date}")
 
         # define image collection
         # # define sr image collection
@@ -251,7 +251,7 @@ def gen_s2_image_collection_for_region(date, time_step, roi, cloud_prob_score=60
                         .map(imageutils.add_cell_level_cloud_cover_property)
                         .filter(ee.Filter.lte('region_cloudy_percent', 0.001))) # filter collection by region_cloudy_percent
         
-        print(f"number of cloud-free available: {img_collection.size().getInfo()}")
+        #print(f"number of cloud-free available: {img_collection.size().getInfo()}")
 
         # perform cloud masking
         img_collection = (img_collection 
@@ -279,7 +279,7 @@ def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, 
         # define dates as str
         start_date = (datetime.strptime(date, "%Y-%m-%d") - timedelta(weeks=time_step)).strftime("%Y-%m-%d")
 
-        print(f"Looking for images between {start_date} and {date}")
+        #print(f"Looking for images between {start_date} and {date}")
 
         if use_TOA == True:
                collection_id = sensor_id[landsat_sensor_id][1]
@@ -299,7 +299,7 @@ def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, 
                 .map(lsutils.add_cloud_band)
                 .map(imageutils.clip_images_to_region(roi))) # clip to region/cell)
         
-        print(f"number of available images: {img_collection.size().getInfo()}")
+        #print(f"number of available images: {img_collection.size().getInfo()}")
 
         # calc pxl counts for cloud mask and total region
         img_collection = (img_collection.map(imageutils.return_region_pxl_count)
@@ -307,7 +307,7 @@ def gen_ls_image_collection_for_region(date, time_step, roi, landsat_sensor_id, 
                         .map(imageutils.add_cell_level_cloud_cover_property)
                         .filter(ee.Filter.lte('region_cloudy_percent', 0.001))) # filter collection by region_cloudy_percent
         
-        print(f"number of cloud-free images: {img_collection.size().getInfo()}")
+        #print(f"number of cloud-free images: {img_collection.size().getInfo()}")
 
         # perform cloud masking
         img_collection = (img_collection 

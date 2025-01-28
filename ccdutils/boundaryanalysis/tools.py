@@ -62,7 +62,9 @@ def count_chg_pxls_in_boundary(chg_img, boundary_pxls_img, chg_vals):
     class_count_dict.update({chg_vals.get(k,k):v for k, v in count_dict.items()})
     class_count_dict = {k:v for k,v in class_count_dict.items() if k != 0} # remove nodata vals from dict 
     class_count_dict["total"] = sum(class_count_dict.values()) # return sum of counts for total pixels in boundary
-
+    
+    array = None
+    count_dict = None
     return class_count_dict
 
 def calc_cdi(input_chg_img, class_img, tmp, mask_vals, eov_boundary):
@@ -117,6 +119,9 @@ def calc_cdi(input_chg_img, class_img, tmp, mask_vals, eov_boundary):
             if (boundary_pxls[class_name]/iteration_count) < class_pixel_count: 
                 print(f"finished on iteration {iteration_count}. Calculating cdi...")
                 break
+            if iteration_count > 100:
+                print("Iteration count exceeded 100. Failed to calculate CDI")
+                return np.nan, np.nan
             
             iteration_count += 1
     
@@ -126,15 +131,19 @@ def calc_cdi(input_chg_img, class_img, tmp, mask_vals, eov_boundary):
     # if boundary_pxls is not 0 calc cdi else cdi and est chg = np.nan
     # return cdi based based on eov_boundary
     if boundary_pxls['total'] != 0:
-        if eov_boundary == True:
-            cdi = round(((boundary_pxls['vegetation'] - boundary_pxls['sand']) / (boundary_pxls['vegetation'] + boundary_pxls['sand']))*iteration_count, 3)
-        else: 
-            cdi = round(((boundary_pxls['sand'] - boundary_pxls['water']) / (boundary_pxls['sand'] + boundary_pxls['water']))*iteration_count, 3)
-        
-        # calc estimated change
-        # get img res
-        xRes, yRes = rsgislib.imageutils.get_img_res(input_chg_img)
-        estimated_change = cdi * xRes # cdi * iterations to estimate change. 
+        try:
+            if eov_boundary == True:
+                cdi = round(((boundary_pxls['vegetation'] - boundary_pxls['sand']) / (boundary_pxls['vegetation'] + boundary_pxls['sand']))*iteration_count, 3)
+            else: 
+                cdi = round(((boundary_pxls['sand'] - boundary_pxls['water']) / (boundary_pxls['sand'] + boundary_pxls['water']))*iteration_count, 3)
+            
+            # calc estimated change
+            # get img res
+            xRes, yRes = rsgislib.imageutils.get_img_res(input_chg_img)
+            estimated_change = cdi * xRes # cdi * iterations to estimate change. 
+        except:
+            print("failed to calculate cdi")
+            return np.nan, np.nan
     else:
         cdi = np.nan
         estimated_change = np.nan
