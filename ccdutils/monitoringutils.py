@@ -308,12 +308,9 @@ def return_tide_levels(metadata_file):
                 "image_date": date,
                 "tide_level_msl": tide_level
             })
-    # Create a new DataFrame from the results list
-    results_df = pd.DataFrame(results)
-
-    # Merge the results DataFrame with the original meta_df on the 'image_date' column
-    meta_df = meta_df.merge(results_df, on='image_date', how='left')
-   
+    # Update the meta_df DataFrame directly
+    for result in results:
+        meta_df.loc[meta_df['image_date'] == result['image_date'], 'tide_level_msl'] = result['tide_level_msl']
     # return meta_df
 
     #write metadata to file

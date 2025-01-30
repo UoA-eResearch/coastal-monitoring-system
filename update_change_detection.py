@@ -36,8 +36,8 @@ gdf_cell_list = [gpd.GeoDataFrame([row]) for idx, row in cells.iterrows()] # Cre
 gdf_cell_list = [i for i in gdf_cell_list if i.cell_id.to_string(index=False) in cells_to_process]
 
 ### Download images ###
-for cell in gdf_cell_list[:5]:
-    monitoringutils.download_images(cell, folder)
+# for cell in gdf_cell_list[:5]:
+#     monitoringutils.download_images(cell, folder)
 
 def check_images(folder):
     print(folder)
@@ -48,6 +48,7 @@ def check_images(folder):
 
 ### perform change detection ###
 cell_directories = glob.glob(f"{folder}/*") # iterate over cell directories
+cell_directories = [i for i in cell_directories if i.split() in cells_to_process]
 for cell_dir in cell_directories:
     check_images(cell_dir)
     monitoringutils.run_change_detection(cell_dir) # run change detection
