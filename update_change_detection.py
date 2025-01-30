@@ -32,9 +32,8 @@ cells = gpd.read_file('global-inputs/HR6-cells-beach-slope.gpkg') # return gdf o
 # return valid_cells 
 valid_cells = pd.read_csv("global-inputs/valid_cells.csv")
 cells_to_process = valid_cells.hex_id.to_list()
-cells = [i for i in cells if i.cell_id.to_string(index=False) in cells_to_process]
-
 gdf_cell_list = [gpd.GeoDataFrame([row]) for idx, row in cells.iterrows()] # Create a list of GeoSeries
+gdf_cell_list = [i for i in gdf_cell_list if i.cell_id.to_string(index=False) in cells_to_process]
 
 ### Download images ###
 for cell in gdf_cell_list[:5]:
