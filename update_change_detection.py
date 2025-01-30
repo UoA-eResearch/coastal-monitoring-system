@@ -29,16 +29,23 @@ except:
 
 cells = gpd.read_file('global-inputs/HR6-cells-beach-slope.gpkg') # return gdf of monitored sites
 
+# return valid_cells 
+valid_cells = pd.read_csv("global-inputs/valid_cells.csv")
+cells_to_process = valid_cells.hex_id.to_list()
+cells = [i for i in cells if i.cell_id.to_string(index=False) in cells_to_process]
+
 gdf_cell_list = [gpd.GeoDataFrame([row]) for idx, row in cells.iterrows()] # Create a list of GeoSeries
 
 ### Download images ###
-for cell in gdf_cell_list:
-    monitoringutils.download_images_in_collection(cell, folder)
+for cell in gdf_cell_list[:5]:
+    monitoringutils.download_images(cell, folder)
 
 ### perform change detection ###
 cell_directories = glob.glob(f"{folder}/*") # iterate over cell directories
 for cell_dir in cell_directories:
-    monitoringutils.run_change_detection(cell_dir)
+    monitoringutils.run_change_detection(cell_dir) # run change detection
+    monitoringutils.return_tide_levels(f"{cell_dir}/image_metadata.json") # return tide levels
+
 
 # End time tracking
 end_time = time.time()
