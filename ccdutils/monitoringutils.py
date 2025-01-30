@@ -683,8 +683,11 @@ def download_images(gdf, down_dir, interval=12):
                     system_index = '_'.join([system_index[0],system_index[-1]]) 
                 fn = f"{system_index}.tif"
                 image_path = f"{directory}/{fn}"
-                imageutils.download_img_local(img.toFloat(), directory, fn, roi.geometry(), crs, scale)
-                convert_image(image_path, no_data_val, 'KEA')
+                try:
+                    imageutils.download_img_local(img.toFloat(), directory, fn, roi.geometry(), crs, scale)
+                    convert_image(image_path, no_data_val, 'KEA')
+                except:
+                    print(f"Issue with image {fn}. Skipping.")
             
             iterator = list(range(0, img_collection.size().getInfo()))
     
