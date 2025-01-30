@@ -590,7 +590,7 @@ def download_images_in_collection(ee_collection, region_of_interest, image_direc
             else:
                 try:
                     imageutils.download_img_local(img.toFloat(), directory, fn, roi.geometry(), crs, scale)
-                    #convert_image(image_path, no_data_val, 'KEA')
+                    convert_image(image_path, no_data_val, 'KEA')
                 except:
                     print(f"issue with {fn}, continuing")
         
@@ -670,42 +670,42 @@ def download_images(gdf, down_dir, interval=12):
             
             download_images_in_collection(img_collection, roi, img_dir_path,cell_dir_path)
             
-            # return collection as list 
-            img_list = img_collection.toList(img_collection.size().getInfo())
+            # # return collection as list 
+            # img_list = img_collection.toList(img_collection.size().getInfo())
     
-            def down_img_mt(img_id, img_collection_list, directory, roi, crs, scale, no_data_val):
-                img = ee.Image(img_collection_list.get(img_id)).select(['ndvi', 'mndwi'])
-                img = img.clip(roi).unmask(no_data_val) # clip img for export
-                system_index = img.get("system:index").getInfo().split('_')[-3:]
-                if len(system_index[-1]) == 6:
-                    system_index = f"S2_{system_index[1][:8]}"
-                else:
-                    system_index = '_'.join([system_index[0],system_index[-1]]) 
-                fn = f"{system_index}.tif"
-                image_path = f"{directory}/{fn}"
-                imageutils.download_img_local(img.toFloat(), directory, fn, roi.geometry(), crs, scale)
-                convert_image(image_path, no_data_val, 'KEA')
+            # def down_img_mt(img_id, img_collection_list, directory, roi, crs, scale, no_data_val):
+            #     img = ee.Image(img_collection_list.get(img_id)).select(['ndvi', 'mndwi'])
+            #     img = img.clip(roi).unmask(no_data_val) # clip img for export
+            #     system_index = img.get("system:index").getInfo().split('_')[-3:]
+            #     if len(system_index[-1]) == 6:
+            #         system_index = f"S2_{system_index[1][:8]}"
+            #     else:
+            #         system_index = '_'.join([system_index[0],system_index[-1]]) 
+            #     fn = f"{system_index}.tif"
+            #     image_path = f"{directory}/{fn}"
+            #     imageutils.download_img_local(img.toFloat(), directory, fn, roi.geometry(), crs, scale)
+            #     convert_image(image_path, no_data_val, 'KEA')
             
-            iterator = list(range(0, img_collection.size().getInfo()))
+            # iterator = list(range(0, img_collection.size().getInfo()))
     
-            thread_map(down_img_mt, iterator, repeat(img_list), repeat(img_dir_path), repeat(roi), repeat("EPSG:2193"), repeat(20), repeat(-99))
-            print("images downloaded.")
+            # thread_map(down_img_mt, iterator, repeat(img_list), repeat(img_dir_path), repeat(roi), repeat("EPSG:2193"), repeat(20), repeat(-99))
+            # print("images downloaded.")
     
-            ### RETURN METADATA ### 
-            collection_metadata = return_image_metadata(img_collection, cell_id, sensor)
-            fn_meta = f"{cell_dir_path}/image_metadata.json"
-            try: # check to see if metadata file exists
-                with open(fn_meta, 'r') as existing_file:
-                    existing_data = json.load(existing_file)
-            except FileNotFoundError:
-                existing_data = {}
+            # ### RETURN METADATA ### 
+            # collection_metadata = return_image_metadata(img_collection, cell_id, sensor)
+            # fn_meta = f"{cell_dir_path}/image_metadata.json"
+            # try: # check to see if metadata file exists
+            #     with open(fn_meta, 'r') as existing_file:
+            #         existing_data = json.load(existing_file)
+            # except FileNotFoundError:
+            #     existing_data = {}
             
-            for k, v in collection_metadata.items(): # add new image metadata if metadata file already exists
-                existing_data.setdefault(k, []).extend(v)
+            # for k, v in collection_metadata.items(): # add new image metadata if metadata file already exists
+            #     existing_data.setdefault(k, []).extend(v)
             
-            # write metadata to file
-            with open(fn_meta, 'w') as file:
-                file.write(json.dumps(existing_data, indent=4))
+            # # write metadata to file
+            # with open(fn_meta, 'w') as file:
+            #     file.write(json.dumps(existing_data, indent=4))
     
         else: 
             print("Images contain too much cloud.")

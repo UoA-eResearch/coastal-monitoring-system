@@ -39,9 +39,17 @@ gdf_cell_list = [i for i in gdf_cell_list if i.cell_id.to_string(index=False) in
 for cell in gdf_cell_list[:5]:
     monitoringutils.download_images(cell, folder)
 
+def check_images(folder):
+    print(folder)
+    img_dir = glob.glob(f"{folder}/images/*.kea")
+    aoi = f"{folder}/aoi_mask.kea"
+    for img in img_dir:
+        monitoringutils.check_input_image(img, aoi) # remove images
+
 ### perform change detection ###
 cell_directories = glob.glob(f"{folder}/*") # iterate over cell directories
 for cell_dir in cell_directories:
+    check_images(cell_dir)
     monitoringutils.run_change_detection(cell_dir) # run change detection
     monitoringutils.return_tide_levels(f"{cell_dir}/image_metadata.json") # return tide levels
 
