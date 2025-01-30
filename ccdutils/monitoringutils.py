@@ -626,6 +626,7 @@ def download_images(gdf, down_dir, interval=12):
     interval - number of weeks to search for imagery from today's date. 
     """
     cell_dir_path = f"{down_dir}/{gdf.cell_id.to_string(index=False)}"
+    cell_id = cell_dir_path.split("/")[-1]
     try:
         os.mkdir(cell_dir_path) 
     except:
@@ -691,7 +692,7 @@ def download_images(gdf, down_dir, interval=12):
             print("images downloaded.")
     
             ### RETURN METADATA ### 
-            collection_metadata = return_image_metadata(img_collection)
+            collection_metadata = return_image_metadata(img_collection, cell_id, sensor)
             fn_meta = f"{cell_dir_path}/image_metadata.json"
             try: # check to see if metadata file exists
                 with open(fn_meta, 'r') as existing_file:
