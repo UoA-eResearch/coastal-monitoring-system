@@ -36,8 +36,8 @@ gdf_cell_list = [gpd.GeoDataFrame([row]) for idx, row in cells.iterrows()] # Cre
 gdf_cell_list = [i for i in gdf_cell_list if i.cell_id.to_string(index=False) in cells_to_process]
 
 ### Download images ###
-# for cell in gdf_cell_list[:5]:
-#     monitoringutils.download_images(cell, folder)
+for cell in gdf_cell_list[5:]:
+    monitoringutils.download_images(cell, folder)
 
 def check_images(folder):
     print(folder)
