@@ -28,16 +28,31 @@ try:
 except:
     os.path.exists(folder) == True
 
-cells = gpd.read_file('global-inputs/HR6-cells-beach-slope.gpkg') # return gdf of monitored sites
-
-# return valid_cells 
+cells = gpd.read_file('global-inputs/HR6-cells-beach-slope.gpkg')
 valid_cells = pd.read_csv("global-inputs/valid_cells.csv")
-cells_to_process = valid_cells.hex_id.to_list()
-gdf_cell_list = [gpd.GeoDataFrame([row]) for idx, row in cells.iterrows()] # Create a list of GeoSeries
-gdf_cell_list = [i for i in gdf_cell_list if i.cell_id.to_string(index=False) in cells_to_process]
+cells_to_process = set(valid_cells.hex_id)  # Using a set for faster lookup
+
+# Filter the cells based on the valid cell IDs
+filtered_cells = cells[cells['cell_id'].isin(cells_to_process)]
+
+# Reset the index of the filtered cells
+filtered_cells = filtered_cells.reset_index(drop=True)
+
+# Find the index of the specific cell
+specific_cell_id = "86da92137ffffff"
+specific_cell_index = filtered_cells.index[filtered_cells['cell_id'] == specific_cell_id].tolist()
+
+# Print the index if the specific cell is found
+if specific_cell_index:
+    print(specific_cell_index[0])
+
+filtered_cells = filtered_cells.iloc[specific_cell_index[0]:]
+
+# Convert each row to a GeoDataFrame and store in a list
+gdf_cell_list = [filtered_cells.iloc[[i]] for i in range(len(filtered_cells))]
 
 ### Download images ###
-for cell in gdf_cell_list[5:10]:
+for cell in gdf_cell_list:
     monitoringutils.download_images(cell, folder)
 
 
