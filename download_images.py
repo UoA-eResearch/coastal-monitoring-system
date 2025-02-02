@@ -12,6 +12,7 @@ import glob
 import os
 import geopandas as gpd 
 import pandas as pd
+import multiprocessing
 
 # surpress TIFF warnings from gdal
 from osgeo import gdal
@@ -36,23 +37,37 @@ gdf_cell_list = [gpd.GeoDataFrame([row]) for idx, row in cells.iterrows()] # Cre
 gdf_cell_list = [i for i in gdf_cell_list if i.cell_id.to_string(index=False) in cells_to_process]
 
 ### Download images ###
-for cell in gdf_cell_list[5:]:
+for cell in gdf_cell_list[5:10]:
     monitoringutils.download_images(cell, folder)
 
-def check_images(folder):
-    print(folder)
-    img_dir = glob.glob(f"{folder}/images/*.kea")
-    aoi = f"{folder}/aoi_mask.kea"
-    for img in img_dir:
-        monitoringutils.check_input_image(img, aoi) # remove images
 
-### perform change detection ###
-cell_directories = glob.glob(f"{folder}/*") # iterate over cell directories
-cell_directories = [i for i in cell_directories if i.split() in cells_to_process]
-for cell_dir in cell_directories:
-    check_images(cell_dir)
-    monitoringutils.run_change_detection(cell_dir) # run change detection
-    monitoringutils.return_tide_levels(f"{cell_dir}/image_metadata.json") # return tide levels
+# ### Process change detection ###
+# def convert_images(folder):
+#     img_dir = glob.glob(f"{folder}/images/*.tif")
+#     for img in img_dir:
+#         monitoringutils.convert_image(img)
+
+# def check_images(folder):
+#     print(folder)
+#     img_dir = glob.glob(f"{folder}/images/*.kea")
+#     aoi = f"{folder}/aoi_mask.kea"
+#     for img in img_dir:
+#         monitoringutils.check_input_image(img, aoi) # remove images
+
+# def process_cell(folder):
+#     convert_images(folder)
+#     check_images(folder)
+#     monitoringutils.run_change_detection(folder) # run change detection
+#     monitoringutils.return_tide_levels(f"{folder}/image_metadata.json") # return tide levels
+
+# ### perform change detection ###
+# if __name__ == "__main__":
+#     cell_directories = glob.glob(f"{folder}/*") # iterate over cell directories
+#     cell_directories = [i for i in cell_directories if i.split('/')[-1] in cells_to_process]
+#     for dir in cell_directories:
+#         p = multiprocessing.Process(target=process_cell, args=(dir,)) # use multiprocessing to avoid memory issues
+#         p.start()
+#         p.join()  # Wait for the process to finish
 
 
 # End time tracking

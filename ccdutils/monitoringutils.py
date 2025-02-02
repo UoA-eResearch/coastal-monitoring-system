@@ -682,7 +682,7 @@ def download_images(gdf, down_dir, interval=12):
                 image_path = f"{directory}/{fn}"
                 try:
                     imageutils.download_img_local(img.toFloat(), directory, fn, roi.geometry(), crs, scale)
-                    convert_image(image_path, no_data_val, 'KEA')
+                    #convert_image(image_path, no_data_val, 'KEA')
                 except:
                     print(f"Issue with image {fn}. Skipping.")
             
