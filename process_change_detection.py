@@ -12,8 +12,6 @@ from osgeo import gdal
 gdal.SetConfigOption('CPL_LOG', '/dev/null')
 os.environ["TQDM_DISABLE"] = "True"
 
-
-
 ### Process change detection ###
 def convert_images(folder):
     img_dir = glob.glob(f"{folder}/images/*.tif")
@@ -44,4 +42,4 @@ if __name__ == "__main__":
     for dir in cell_directories:
         p = multiprocessing.Process(target=process_cell, args=(dir,)) # use multiprocessing to avoid memory issues
         p.start()
-        p.join()  # Wait for the process to finish
+        p.join()
