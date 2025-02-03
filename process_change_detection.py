@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import ccdutils.monitoringutils as monitoringutils
 import glob
 import os
