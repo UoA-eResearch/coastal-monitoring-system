@@ -86,10 +86,37 @@
             font-size: 1rem;
         }
 
+        /* Add styles for the left panel */
+        #left-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 250px;
+            height: 100%;
+            background-color: #f8f9fa;
+            padding: 10px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
     </style>
 </head>
 <body>
     <!-- <h1 id="title">New Zealand Coastal Landcover Change</h1> -->
+    <div id="left-panel">
+        <h2>New Zealand Coastal Landcover Change</h2>
+        <p>
+            This map presents historical coastal landcover change generated from optical satellite imagery in Landsat and Setninel-2 constellations.
+            Users can view landcover percentage change for sediment, water, and vegetation and estimated shoreline change for Instantaenous Waterline and Edge of Vegetation shoreline proxies within each hexagonal cell.
+            The initial national scale coastal classification is described in Collings et al., (2022), and a map-to-image change detection approach was used to estimate change between this classification and subsequent imagery. 
+            Google Earth Engine was used to preprocess and download imagery, via a service account. To correct estimated waterline position for tide, beach slope was acquired from https://zenodo.org/records/7758183 which was calculated by @kvos using CoastSat.slope. 
+            The NIWA tide api was used to acquire tide level.
+
+            Processing and results were calculated on a NeCTAR VM and updates a scheduled to check for new images and update the record monthly.  
+
+        </p>
+        <!-- Add more information as needed -->
+    </div>
     <div id="map"></div>
     <script type="text/javascript">
         var mymap = L.map('map').setView([-41, 172], 5);
