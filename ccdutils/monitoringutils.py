@@ -614,7 +614,7 @@ def download_images_in_collection(ee_collection, region_of_interest, image_direc
         with open(fn_meta, 'w') as file:
             file.write(json.dumps(meta_dict, indent=4))
 
-def download_images(gdf, down_dir, interval=12):
+def download_images(gdf, down_dir, interval=5):
     """
     function to download images in ee.ImageCollection
     Args
