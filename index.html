@@ -27,7 +27,7 @@
         }
         .toggle-button {
             position: absolute;
-            top: 60px; /* Position below zoom control */
+            top: 100px; /* Position below zoom control */
             right: 10px;
             z-index: 1001;
             background-color: white;
@@ -136,7 +136,7 @@
         <!-- Add more information as needed -->
     </div>
     <div id="map"></div>
-    <button class="toggle-button" onclick="toggleTrend()">Toggle Trend</button>
+    <button class="toggle-button" onclick="toggleTrend()">Click here to view IW or EOV trend</button>
     <script type="text/javascript">
         var currentTrend = "IW"; // Default trend
         var mymap = L.map('map', {
@@ -366,7 +366,7 @@
         function updateLegend() {
             var legendContent = document.querySelector('.legend');
             if (legendContent) {
-                legendContent.innerHTML = `<h4>Trend (${currentTrend}) (m/year)</h4>`;
+                legendContent.innerHTML = `<h4>${currentTrend} trend (m/year)</h4>`;
                 for (var i = -5; i <= 5; i++) {
                     var prefix = ""
                     if (i == -5) {
@@ -388,7 +388,9 @@
             return div;
         };
         legend.addTo(mymap);
-            
+        
+        // Ensure legend is updated after it is added to the map
+        setTimeout(updateLegend, 100);
     </script>
 </body>
 </html>
