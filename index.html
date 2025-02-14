@@ -357,7 +357,6 @@
             };
         };
 
-        
         function toggleTrend() {
             currentTrend = currentTrend === "IW" ? "EOV" : "IW";
             addGeoJSONLayer();
@@ -366,15 +365,17 @@
 
         function updateLegend() {
             var legendContent = document.querySelector('.legend');
-            legendContent.innerHTML = `<h4>Trend (${currentTrend}) (m/year)</h4>`;
-            for (var i = -5; i <= 5; i++) {
-                var prefix = ""
-                if (i == -5) {
-                    prefix = "≤ " 
-                } else if (i == 5) {
-                    prefix = "≥ "
+            if (legendContent) {
+                legendContent.innerHTML = `<h4>Trend (${currentTrend}) (m/year)</h4>`;
+                for (var i = -5; i <= 5; i++) {
+                    var prefix = ""
+                    if (i == -5) {
+                        prefix = "≤ " 
+                    } else if (i == 5) {
+                        prefix = "≥ "
+                    }
+                    legendContent.innerHTML += `<i style="background:${cmap(i).css()}"></i>${prefix + i}<br>`
                 }
-                legendContent.innerHTML += `<i style="background:${cmap(i).css()}"></i>${prefix + i}<br>`
             }
         }
 
@@ -387,8 +388,7 @@
             return div;
         };
         legend.addTo(mymap);
-        
-        
+            
     </script>
 </body>
 </html>
