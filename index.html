@@ -97,6 +97,7 @@
             padding: 10px;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
             overflow-y: auto;
+            z-index: 1000;
         }
 
     </style>
@@ -120,6 +121,9 @@
     <div id="map"></div>
     <script type="text/javascript">
         var mymap = L.map('map').setView([-41, 172], 5);
+        L.control.zoom({
+            position: 'topright' // Position zoom control to the right
+        }).addTo(mymap);
         L.tileLayer('https://basemaps.linz.govt.nz/v1/tiles/aerial/WebMercatorQuad/{z}/{x}/{y}.webp?api=c01hevnqk6vravw5jx6tw7xw9zx', {
             attribution: 'Map data &copy; <a href="">OpenStreetMap</a> contributors, ' +
                 '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
