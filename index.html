@@ -25,6 +25,16 @@
             margin: 0;
             padding: 0;
         }
+        .toggle-button {
+            position: absolute;
+            top: 60px; /* Position below zoom control */
+            right: 10px;
+            z-index: 1001;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
         .info {
         padding: 6px 8px;
         font: 11px/12px Arial, Helvetica, sans-serif;
@@ -112,7 +122,7 @@
     <div id="left-panel">
         <h2>New Zealand Coastal Landcover Change</h2>
         <p>
-            This map presents historical coastal landcover change generated from optical satellite imagery in Landsat and Setninel-2 constellations.
+            This map presents historical coastal landcover change generated from optical satellite imagery in Landsat and Sentinel-2 constellations.
             Users can view landcover percentage change for sediment, water, and vegetation and estimated shoreline change for Instantaenous Waterline and Edge of Vegetation shoreline proxies within each hexagonal cell.
             The initial national scale coastal classification is described in Collings et al., (2022), and a map-to-image change detection approach was used to estimate change between this classification and subsequent imagery. 
             Google Earth Engine was used to preprocess and download imagery, via a service account. To correct estimated waterline position for tide, beach slope was acquired from https://zenodo.org/records/7758183 which was calculated by @kvos using CoastSat.slope. 
@@ -124,7 +134,9 @@
         <!-- Add more information as needed -->
     </div>
     <div id="map"></div>
+    <button class="toggle-button" onclick="toggleTrend()">Toggle Trend</button>
     <script type="text/javascript">
+        var currentTrend = "IW"; // Default trend
         var mymap = L.map('map', {
             center: [-41, 172],
             zoom: 5,
@@ -144,7 +156,7 @@
         var cmap = chroma.scale("RdYlGn").domain([-5, 5]);
         function style(feature) {
             return {
-                fillColor: cmap(feature.properties["IW shoreline trend"]),
+                fillColor: cmap(feature.properties[currentTrend + " shoreline trend"]),
                 weight: 1,
                 opacity: 1,
                 color: 'black',
@@ -152,14 +164,21 @@
         }}
 
         // get geojson and add to map
-        var cells = $.getJSON("shoreline_trends_by_cell.geojson", function (geojson) {
-            console.log(geojson)
-            L.geoJSON(geojson, {
-                style:style,
-                onEachFeature:onEachFeature
-            }).addTo(mymap)
+        var geojsonLayer;
+        function addGeoJSONLayer() {
+            if (geojsonLayer) {
+                mymap.removeLayer(geojsonLayer);
+            }
+            geojsonLayer = $.getJSON("shoreline_trends_by_cell.geojson", function (geojson) {
+                console.log(geojson)
+                geojsonLayer = L.geoJSON(geojson, {
+                    style: style,
+                    onEachFeature: onEachFeature
+                }).addTo(mymap)
+            });
+        }
 
-        });
+        addGeoJSONLayer();
 
         // define plots as popup
         function onEachFeature(feature, layer) {
@@ -336,12 +355,15 @@
             };
         };
 
-        // define legend 
-        var legend = L.control({position: 'bottomright'});
-        legend.onAdd = function (map) {
-            var div = L.DomUtil.create('div', 'info legend');
-            div.innerHTML += "<h4>Trend (m/year)<h4>"
-            // gen prefix for legend
+        function toggleTrend() {
+            currentTrend = currentTrend === "IW" ? "EOV" : "IW";
+            addGeoJSONLayer();
+            updateLegend();
+        }
+
+        function updateLegend() {
+            var legendContent = document.querySelector('.legend');
+            legendContent.innerHTML = `<h4>Trend (${currentTrend}) (m/year)</h4>`;
             for (var i = -5; i <= 5; i++) {
                 var prefix = ""
                 if (i == -5) {
@@ -349,15 +371,18 @@
                 } else if (i == 5) {
                     prefix = "≥ "
                 }
-                div.innerHTML += `<i style="background:${cmap(i).css()}"></i>${prefix + i}<br>`
+                legendContent.innerHTML += `<i style="background:${cmap(i).css()}"></i>${prefix + i}<br>`
             }
-            // div.innerHTML += `<div id="attribution">This map shows coastal landcover change and estimated IW and EOV shoreline trends for each cells in New Zealand.<br>
-            //     </div>`
+        }
+
+        // Add legend to map
+        var legend = L.control({position: 'bottomright'});
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'info legend');
+            updateLegend();
             return div;
         };
-
         legend.addTo(mymap);
-
         
         
     </script>
