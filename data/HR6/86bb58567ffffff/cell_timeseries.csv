@@ -1,3 +1,4 @@
 Unnamed: 0,sensor,date,IW_CDI,IW_shoreline_chg,EOV_CDI,EOV_shoreline_chg,IW_area_change (Ha),EOV_area_change (Ha),sand_area (Ha),water_area (Ha),vegetation_area (Ha)
 0.0,LC08,2021-11-09,-2.64,-52.88,-65.0,-1300.0,-22.32,3.08,77.48,1251.4,34.8
 ,LC09,2023-04-13,-0.44,-8.7,-65.0,-1300.0,0.44,-0.96,104.28,1228.64,30.76
+,LC09,2025-07-23,-0.8,-16.08,-65.0,-1300.0,-13.16,-0.92,90.64,1242.24,30.8
